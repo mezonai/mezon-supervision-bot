@@ -133,6 +133,7 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
           mk: [{ type: EMarkdownType.PRE, s: 0, e: successMessage.length }],
         });
       } catch (error) {
+        console.log('error', error)
         try {
           const user = await client.users.fetch('1827994776956309504');
           const successMessage = `Không send được DM cho user ${tokenEvent.sender_id}.

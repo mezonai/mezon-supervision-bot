@@ -28,8 +28,8 @@ export class UnbanCommand extends CommandMessage {
     if (!typeMatch || !usernameMatch) {
       const content = `[Unban]
         - [username]: tên người bị ban
-        - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
-        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: rut`;
+        - [type]: ban chức năng (lixi, all)
+        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: lixi`;
 
       return await messageChannel?.reply({
         t: content,
@@ -50,20 +50,8 @@ export class UnbanCommand extends CommandMessage {
 
     let funcType = '';
     switch (type) {
-      case FuncType.RUT:
-        funcType = FuncType.RUT;
-        break;
       case FuncType.LIXI:
         funcType = FuncType.LIXI;
-        break;
-      case FuncType.SICBO:
-        funcType = FuncType.SICBO;
-        break;
-      case FuncType.SLOTS:
-        funcType = FuncType.SLOTS;
-        break;
-      case FuncType.TRANSACTION:
-        funcType = FuncType.TRANSACTION;
         break;
       case FuncType.ALL:
         funcType = FuncType.ALL;
@@ -71,8 +59,8 @@ export class UnbanCommand extends CommandMessage {
       default:
         const content = `[unban]
         - [username]: tên người bị ban
-        - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
-        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: rut`;
+        - [type]: ban chức năng (lixi, all)
+        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: lixi`;
 
         return await messageChannel?.reply({
           t: content,

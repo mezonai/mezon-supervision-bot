@@ -2,14 +2,10 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { ChannelMessage, Events } from 'mezon-sdk';
 import { CommandBase } from '../base/command.handle';
 import { Injectable } from '@nestjs/common';
-import { PollTrackerService } from '../services/pollTracker.service';
 
 @Injectable()
 export class ListenerChannelMessage {
-  constructor(
-    private commandBase: CommandBase,
-    private pollTrackerService: PollTrackerService,
-  ) {}
+  constructor(private commandBase: CommandBase) {}
 
   @OnEvent(Events.ChannelMessage)
   async handleCommand(message: ChannelMessage) {
@@ -29,19 +25,5 @@ export class ListenerChannelMessage {
     } catch (e) {
       console.log(e);
     }
-  }
-
-  @OnEvent(Events.ChannelMessage)
-  async handleMessageCreated(data: ChannelMessage) {
-    const clanId = data?.clan_id;
-    const channelId = data?.channel_id;
-    const messageId = data?.message_id;
-    if (!clanId || !channelId || !messageId) return;
-    this.pollTrackerService.handleNewMessage(
-      clanId,
-      channelId,
-      messageId,
-      data,
-    );
   }
 }

@@ -30,10 +30,10 @@ export class BanCommand extends CommandMessage {
     if (!typeMatch || !timeMatch || !usernameMatch) {
       const content = `[Ban]
         - [username]: tên người bị ban
-        - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
+        - [type]: ban chức năng (lixi, all)
         - [time]: thời gian ban (đơn vị: s, m, h, d)
         - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại`;
+        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: lixi [time]: 5m [note]: phá hoại`;
 
       return await messageChannel?.reply({
         t: content,
@@ -70,40 +70,28 @@ export class BanCommand extends CommandMessage {
         duration = timeValue * 86400;
         break;
       default:
-        const content = `[Ban]
+        const contentInvalidUnit = `[Ban]
         - [username]: tên người bị ban
-        - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
+        - [type]: ban chức năng (lixi, all)
         - [time]: thời gian ban (đơn vị: s, m, h, d)
         - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại`;
+        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: lixi [time]: 5m [note]: phá hoại`;
 
         return await messageChannel?.reply({
-          t: content,
+          t: contentInvalidUnit,
           mk: [
             {
               type: EMarkdownType.PRE,
               s: 0,
-              e: content.length,
+              e: contentInvalidUnit.length,
             },
           ],
         });
     }
     let funcType = '';
     switch (type) {
-      case FuncType.RUT:
-        funcType = FuncType.RUT;
-        break;
       case FuncType.LIXI:
         funcType = FuncType.LIXI;
-        break;
-      case FuncType.SICBO:
-        funcType = FuncType.SICBO;
-        break;
-      case FuncType.SLOTS:
-        funcType = FuncType.SLOTS;
-        break;
-      case FuncType.TRANSACTION:
-        funcType = FuncType.TRANSACTION;
         break;
       case FuncType.ALL:
         funcType = FuncType.ALL;
@@ -111,10 +99,10 @@ export class BanCommand extends CommandMessage {
       default:
         const content = `[Ban]
         - [username]: tên người bị ban
-        - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
+        - [type]: ban chức năng (lixi, all)
         - [time]: thời gian ban (đơn vị: s, m, h, d)
         - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại`;
+        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: lixi [time]: 5m [note]: phá hoại`;
 
         return await messageChannel?.reply({
           t: content,

@@ -1,3 +1,5 @@
+# mezon-supervision-bot
+A robust supervision and moderation bot designed for the Mezon platform. Streamline community management with automated tools, real-time monitoring, and administrative utilities.
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>

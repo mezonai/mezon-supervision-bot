@@ -40,7 +40,7 @@ export class WelcomeMsgCommand extends CommandMessage {
       ? fullMessage.slice(commandPrefix.length).trim()
       : fullMessage.slice('*'.length).trim();
     const dataMezonBotMessage = {
-      botId: process.env.UTILITY_BOT_ID,
+      botId: process.env.SUPERVISION_BOT_ID,
       content: contentWithoutCommand,
     };
     await this.welcomeMessageRepository.upsert(dataMezonBotMessage, ['botId']);

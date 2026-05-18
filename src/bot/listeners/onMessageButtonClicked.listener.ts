@@ -2,14 +2,10 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { Events } from 'mezon-sdk';
 import { Injectable } from '@nestjs/common';
 import { RoleService } from '../commands/selfAssignableRoles/role.service';
-import { LixiService } from '../lixi/lixi.service';
 
 @Injectable()
 export class ListenerMessageButtonClicked {
-  constructor(
-    private roleService: RoleService,
-    private lixiService: LixiService,
-  ) {}
+  constructor(private roleService: RoleService) {}
 
   @OnEvent(Events.MessageButtonClicked)
   async hanndleButtonForm(data) {
@@ -19,9 +15,6 @@ export class ListenerMessageButtonClicked {
       switch (buttonConfirmType) {
         case 'role':
           this.handleSelectRole(data);
-          break;
-        case 'lixi':
-          this.handleSelectLixi(data);
           break;
         default:
           break;
@@ -36,14 +29,6 @@ export class ListenerMessageButtonClicked {
       await this.roleService.handleSelectRole(data);
     } catch (error) {
       console.log('ERORR handleSelectRole', error);
-    }
-  }
-
-  async handleSelectLixi(data) {
-    try {
-      await this.lixiService.handleSelectLixi(data);
-    } catch (error) {
-      console.log('ERORR handleSelectLixi', error);
     }
   }
 }

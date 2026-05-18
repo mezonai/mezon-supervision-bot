@@ -33,11 +33,9 @@ export enum EmbebButtonType {
   CONFIRM = 'CONFIRM',
   CANCEL = 'CANCEL',
   SAVE = 'SAVE',
-  LIXI = 'LIXI',
-  SUBMITCREATE = 'SUBMITCREATE',
 }
 
 export enum FuncType {
-  LIXI = 'lixi',
+  REWARD = 'reward',
   ALL = 'all',
 }

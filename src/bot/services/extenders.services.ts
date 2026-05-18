@@ -28,7 +28,7 @@ export class ExtendersService {
     invitor: string,
     clan_id: string,
   ) {
-    const botId = process.env.UTILITY_BOT_ID;
+    const botId = process.env.SUPERVISION_BOT_ID;
     if (user.user_id === botId) return;
     if (user.user_id === '1767478432163172999') return; // ignored anonymous user
 
@@ -45,7 +45,7 @@ export class ExtendersService {
       return;
     }
 
-    const komuUser = {
+    const newUser = {
       user_id: user.user_id,
       username: user.username,
       avatar: user.avatar,
@@ -54,7 +54,6 @@ export class ExtendersService {
       clan_nick: user.clan_nick ?? '',
       last_message_id: user.message_id,
       last_message_time: Date.now(),
-      scores_quiz: 0,
       deactive: false,
       botPing: false,
       createdAt: Date.now(),
@@ -62,6 +61,6 @@ export class ExtendersService {
       invitor: invitor ? { [clan_id]: invitor } : {},
     };
 
-    await this.userRepository.insert(komuUser);
+    await this.userRepository.insert(newUser);
   }
 }

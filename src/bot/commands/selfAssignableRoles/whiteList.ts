@@ -20,7 +20,7 @@ export class WhiteListAddCommand extends CommandMessage {
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     const bot = await this.userRepository.findOne({
-      where: { user_id: process.env.UTILITY_BOT_ID || '' },
+      where: { user_id: process.env.SUPERVISION_BOT_ID || '' },
     });
     if (!bot)
       return await messageChannel?.reply({

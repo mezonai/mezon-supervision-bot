@@ -38,9 +38,6 @@ export class User {
   @Column({ type: 'text', nullable: true })
   last_mentioned_message_id: string;
 
-  @Column({ default: 0 })
-  scores_quiz: number;
-
   @Column('text', { array: true, nullable: true })
   roles: string[];
 
@@ -53,29 +50,11 @@ export class User {
   @Column({ default: false })
   botPing: boolean;
 
-  @Column({ default: true })
-  buzzDaily: boolean;
-
-  @Column({ default: true })
-  buzzNcc8: boolean;
-
   @Column({ type: 'numeric', nullable: true })
   createdAt: number;
 
   @Column({ type: 'numeric', nullable: true, default: 0 })
   amount: number;
-
-  @Column({ type: 'numeric', nullable: true, default: 0 })
-  amountUsedSlots: number;
-
-  @Column({ type: 'numeric', nullable: true, default: 0 })
-  jackPot: number;
-
-  @Column({ type: 'numeric', nullable: true, default: 0 })
-  jackPot1k: number;
-
-  @Column({ type: 'numeric', nullable: true, default: 0 })
-  jackPot3k: number;
 
   @Column({ type: 'jsonb', nullable: true, default: {} })
   roleClan: {
@@ -89,6 +68,11 @@ export class User {
   };
   @Column({ type: 'jsonb', nullable: true, default: {} })
   whitelist: {
+    [clanId: string]: string[];
+  };
+
+  @Column({ type: 'jsonb', nullable: true, default: {} })
+  rewardGrantors: {
     [clanId: string]: string[];
   };
 

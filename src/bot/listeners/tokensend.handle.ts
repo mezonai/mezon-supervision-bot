@@ -9,6 +9,7 @@ import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { UserCacheService } from 'src/bot/services/user-cache.service';
 import { RedisCacheService } from 'src/bot/services/redis-cache.service';
 import { BaseQueueProcessor } from 'src/bot/base/queue-processor.base';
+import { PermissionService } from 'src/bot/services/permission.service';
 
 @Injectable()
 export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
@@ -21,6 +22,7 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
     private dataSource: DataSource,
     private userCacheService: UserCacheService,
     private redisCacheService: RedisCacheService,
+    private permissionService: PermissionService,
   ) {
     super('ListenerTokenSend', 1, 15000);
   }
@@ -29,9 +31,9 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
   async handleRecharge(tokenEvent: TokenSentEvent) {
     if (tokenEvent.amount <= 0) return;
 
-    const botId = process.env.UTILITY_BOT_ID;
+    const botId = process.env.SUPERVISION_BOT_ID;
     if (!botId) {
-      console.error('UTILITY_BOT_ID is not defined');
+      console.error('SUPERVISION_BOT_ID is not defined');
       return;
     }
 
@@ -42,10 +44,10 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
 
   protected async processItem(tokenEvent: TokenSentEvent): Promise<void> {
     const amount = Number(tokenEvent.amount) || 0;
-    const botId = process.env.UTILITY_BOT_ID;
+    const botId = process.env.SUPERVISION_BOT_ID;
 
     if (!botId) {
-      throw new Error('UTILITY_BOT_ID is not defined');
+      throw new Error('SUPERVISION_BOT_ID is not defined');
     }
 
     const lockKey = `recharge_${tokenEvent.transaction_id}`;
@@ -81,7 +83,6 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
       const balanceResult = await this.userCacheService.updateUserBalance(
         tokenEvent.sender_id as string,
         amount,
-        0,
         10,
       );
 
@@ -93,8 +94,8 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
 
       const botCache = await this.userCacheService.createUserIfNotExists(
         botId,
-        'UtilityBot',
-        'UtilityBot',
+        'SupervisionBot',
+        'SupervisionBot',
       );
 
       if (!botCache) {
@@ -104,7 +105,6 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
       const botBalanceResult = await this.userCacheService.updateUserBalance(
         botId,
         amount,
-        0,
         10,
       );
 
@@ -133,18 +133,23 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
           mk: [{ type: EMarkdownType.PRE, s: 0, e: successMessage.length }],
         });
       } catch (error) {
-        console.log('error', error)
-        try {
-          const user = await client.users.fetch('1827994776956309504');
-          const successMessage = `Không send được DM cho user ${tokenEvent.sender_id}.
-          ${error}
-          `;
-          await user?.sendDM({
-            t: successMessage,
-            mk: [{ type: EMarkdownType.PRE, s: 0, e: successMessage.length }],
-          });
-        } catch (errorAdmin) {
-          console.log('errorerror', errorAdmin);
+        this.logger.warn(
+          `Failed to DM sender ${tokenEvent.sender_id}: ${error?.message || error}`,
+        );
+        const adminId = this.permissionService.getAdminIds()[0];
+        if (adminId) {
+          try {
+            const adminUser = await client.users.fetch(adminId);
+            const adminMessage = `Không send được DM cho user ${tokenEvent.sender_id}.\n${error}`;
+            await adminUser?.sendDM({
+              t: adminMessage,
+              mk: [{ type: EMarkdownType.PRE, s: 0, e: adminMessage.length }],
+            });
+          } catch (errorAdmin) {
+            this.logger.error(
+              `Failed to DM admin ${adminId}: ${errorAdmin?.message || errorAdmin}`,
+            );
+          }
         }
       }
 
@@ -156,7 +161,6 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
         await this.userCacheService.updateUserBalance(
           tokenEvent.sender_id as string,
           -amount,
-          0,
           5,
         );
       } catch (rollbackError) {

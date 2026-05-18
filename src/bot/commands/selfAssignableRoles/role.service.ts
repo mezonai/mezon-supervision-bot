@@ -196,7 +196,7 @@ export class RoleService {
 
       if (typeButtonRes === EmbebButtonType.CONFIRM) {
         const bot = await this.userRepository.findOne({
-          where: { user_id: process.env.UTILITY_BOT_ID || '' },
+          where: { user_id: process.env.SUPERVISION_BOT_ID || '' },
         });
         if (bot && bot.roleClan) {
           const clanData = bot.roleClan[clanId];

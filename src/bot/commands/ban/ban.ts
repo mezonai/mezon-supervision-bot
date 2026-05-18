@@ -7,6 +7,7 @@ import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { FuncType } from 'src/bot/constants/configs';
 import { UserCacheService } from 'src/bot/services/user-cache.service';
+import { PermissionService } from 'src/bot/services/permission.service';
 
 @Command('ban')
 export class BanCommand extends CommandMessage {
@@ -14,12 +15,13 @@ export class BanCommand extends CommandMessage {
     clientService: MezonClientService,
     @InjectRepository(User) private userRepository: Repository<User>,
     private userCacheService: UserCacheService,
+    private permissionService: PermissionService,
   ) {
     super(clientService);
   }
 
   async execute(args: string[], message: ChannelMessage) {
-    if (message.sender_id !== '1827994776956309504') return;
+    if (!this.permissionService.isAdmin(message.sender_id || '')) return;
     const messageChannel = await this.getChannelMessage(message);
     const content = args.join(' ');
     const usernameMatch = content.match(/\[username\]:\s*([^\[\]]+)/);
@@ -30,10 +32,10 @@ export class BanCommand extends CommandMessage {
     if (!typeMatch || !timeMatch || !usernameMatch) {
       const content = `[Ban]
         - [username]: tên người bị ban
-        - [type]: ban chức năng (lixi, all)
+        - [type]: ban chức năng (reward, all)
         - [time]: thời gian ban (đơn vị: s, m, h, d)
         - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: lixi [time]: 5m [note]: phá hoại`;
+        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: reward [time]: 5m [note]: phá hoại`;
 
       return await messageChannel?.reply({
         t: content,
@@ -72,10 +74,10 @@ export class BanCommand extends CommandMessage {
       default:
         const contentInvalidUnit = `[Ban]
         - [username]: tên người bị ban
-        - [type]: ban chức năng (lixi, all)
+        - [type]: ban chức năng (reward, all)
         - [time]: thời gian ban (đơn vị: s, m, h, d)
         - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: lixi [time]: 5m [note]: phá hoại`;
+        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: reward [time]: 5m [note]: phá hoại`;
 
         return await messageChannel?.reply({
           t: contentInvalidUnit,
@@ -90,8 +92,8 @@ export class BanCommand extends CommandMessage {
     }
     let funcType = '';
     switch (type) {
-      case FuncType.LIXI:
-        funcType = FuncType.LIXI;
+      case FuncType.REWARD:
+        funcType = FuncType.REWARD;
         break;
       case FuncType.ALL:
         funcType = FuncType.ALL;
@@ -99,10 +101,10 @@ export class BanCommand extends CommandMessage {
       default:
         const content = `[Ban]
         - [username]: tên người bị ban
-        - [type]: ban chức năng (lixi, all)
+        - [type]: ban chức năng (reward, all)
         - [time]: thời gian ban (đơn vị: s, m, h, d)
         - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: lixi [time]: 5m [note]: phá hoại`;
+        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: reward [time]: 5m [note]: phá hoại`;
 
         return await messageChannel?.reply({
           t: content,

@@ -22,7 +22,7 @@ export class WelcomeMessageHandler {
     const clan = await this.client.clans.get(addClanUser.clan_id);
 
     const welcomeMessage = await this.WelcomeMsgRepository.findOne({
-      where: { botId: process.env.UTILITY_BOT_ID },
+      where: { botId: process.env.SUPERVISION_BOT_ID },
     });
     if (!welcomeMessage || !clan) {
       return;

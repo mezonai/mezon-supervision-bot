@@ -4,12 +4,14 @@ import { Command } from 'src/bot/base/commandRegister.decorator';
 import { CommandStorage } from 'src/bot/base/storage';
 import { DynamicCommandService } from 'src/bot/services/dynamic.service';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
+import { PermissionService } from 'src/bot/services/permission.service';
 
 @Command('help')
 export class HelpCommand extends CommandMessage {
   constructor(
     clientService: MezonClientService,
     private dynamicCommandService: DynamicCommandService,
+    private permissionService: PermissionService,
   ) {
     super(clientService);
   }
@@ -17,7 +19,10 @@ export class HelpCommand extends CommandMessage {
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
 
-    if (args[0] === 'user' && message.sender_id === '1827994776956309504') {
+    if (
+      args[0] === 'user' &&
+      this.permissionService.isAdmin(message.sender_id || '')
+    ) {
       if (args[1]) {
         const user = this.client.users.get(args[1]);
         let messageContent = `userId: ${user?.id}, dmId: ${user?.dmChannelId}`;
@@ -40,21 +45,14 @@ export class HelpCommand extends CommandMessage {
     const allCommands = CommandStorage.getAllCommands();
     const allCommandsCustom =
       this.dynamicCommandService.getDynamicCommandList();
-    const hidenCommandList = [
-      'update',
-      'register',
-      'toggleactive',
-      'checkchannel',
-      'toggleprivatechannel',
-      'togglechannel',
-    ];
+    const hidenCommandList = ['update', 'rewardsetup'];
     const allCommandKeys = Array.from(allCommands.keys()).filter(
       (item) => !hidenCommandList.includes(item),
     );
     const messageContent =
-      'Utility - Help Menu' +
+      'Mezon Supervision — Help' +
       '\n' +
-      '• Utility (' +
+      '• Commands (' +
       allCommandKeys.length +
       ')' +
       '\n' +

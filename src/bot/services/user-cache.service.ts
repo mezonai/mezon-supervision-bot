@@ -7,7 +7,6 @@ import { RedisCacheService, UserCache } from './redis-cache.service';
 @Injectable()
 export class UserCacheService {
   private readonly logger = new Logger(UserCacheService.name);
-  private readonly sqlLogger = new Logger(`${UserCacheService.name}:SQL`);
 
   private userCache = new Map<string, UserCache>();
   private readonly CACHE_SYNC_INTERVAL = 5 * 60000;
@@ -103,13 +102,6 @@ export class UserCacheService {
       )
       .join(' ');
 
-    const amountUsedSlotsCases = users
-      .map(
-        ({ userId, userCache }) =>
-          `WHEN user_id = '${userId}' THEN ${Number(userCache.amountUsedSlots || 0)}`,
-      )
-      .join(' ');
-
     const usernameCases = users
       .map(
         ({ userId, userCache }) =>
@@ -124,43 +116,15 @@ export class UserCacheService {
       )
       .join(' ');
 
-    const jackPotCases = users
-      .map(
-        ({ userId, userCache }) =>
-          `WHEN user_id = '${userId}' THEN ${Number(userCache.jackPot || 0)}`,
-      )
-      .join(' ');
-
-    const jackPot1kCases = users
-      .map(
-        ({ userId, userCache }) =>
-          `WHEN user_id = '${userId}' THEN ${Number(userCache.jackPot1k || 0)}`,
-      )
-      .join(' ');
-
-    const jackPot3kCases = users
-      .map(
-        ({ userId, userCache }) =>
-          `WHEN user_id = '${userId}' THEN ${Number(userCache.jackPot3k || 0)}`,
-      )
-      .join(' ');
-
     const queryBuilder = this.userRepository
       .createQueryBuilder()
       .update(User)
       .set({
         amount: () => `CASE ${amountCases} END`,
-        amountUsedSlots: () => `CASE ${amountUsedSlotsCases} END`,
         username: () => `CASE ${usernameCases} END`,
         clan_nick: () => `CASE ${clanNickCases} END`,
-        jackPot: () => `CASE ${jackPotCases} END`,
-        jackPot1k: () => `CASE ${jackPot1kCases} END`,
-        jackPot3k: () => `CASE ${jackPot3kCases} END`,
       })
       .whereInIds(userIds);
-
-    // this.sqlLogger.log(`Bulk updating ${users.length} users`);
-    // this.sqlLogger.debug(`SQL: ${queryBuilder.getSql()}`);
 
     await queryBuilder.execute();
   }
@@ -173,10 +137,8 @@ export class UserCacheService {
       { user_id: userId },
       {
         amount: Number(userCache.amount),
-        amountUsedSlots: Number(userCache.amountUsedSlots || 0),
         username: userCache.username,
         clan_nick: userCache.clan_nick,
-        jackPot: Number(userCache.jackPot || 0),
       },
     );
   }
@@ -246,13 +208,9 @@ export class UserCacheService {
       const userCache: UserCache = {
         user_id: user.user_id,
         amount: Number(user.amount) || 0,
-        amountUsedSlots: Number(user.amountUsedSlots) || 0,
         ban: user.ban || [],
         username: user.username || '',
         clan_nick: user.clan_nick || '',
-        jackPot: Number(user.jackPot) || 0,
-        jackPot1k: Number(user.jackPot1k) || 0,
-        jackPot3k: Number(user.jackPot3k) || 0,
         lastUpdated: Date.now(),
       };
 
@@ -280,7 +238,6 @@ export class UserCacheService {
       const newUser = this.userRepository.create({
         user_id: userId,
         amount: 0,
-        amountUsedSlots: 0,
         username: username || '',
         clan_nick: clanNick || '',
         ban: [],
@@ -290,13 +247,9 @@ export class UserCacheService {
       const userCache: UserCache = {
         user_id: userId,
         amount: 0,
-        amountUsedSlots: 0,
         ban: [],
         username: username || '',
         clan_nick: clanNick || '',
-        jackPot: 0,
-        jackPot1k: 0,
-        jackPot3k: 0,
         lastUpdated: Date.now(),
       };
 
@@ -328,7 +281,6 @@ export class UserCacheService {
   async updateUserBalance(
     userId: string,
     amountChange: number,
-    usedSlotsChange: number = 0,
     lockTimeout: number = 5,
   ): Promise<{ success: boolean; newBalance: number; error?: string }> {
     const lockKey = `user_balance_${userId}`;
@@ -366,20 +318,9 @@ export class UserCacheService {
         };
       }
 
-      const newUsedSlots = Number(user.amountUsedSlots || 0) + usedSlotsChange;
-
       await this.updateUserCache(userId, {
         amount: newBalance,
-        amountUsedSlots: Math.max(0, newUsedSlots),
       });
-
-      // await this.userRepository.update(
-      //   { user_id: userId },
-      //   {
-      //     amount: newBalance,
-      //     amountUsedSlots: Math.max(0, newUsedSlots),
-      //   },
-      // );
 
       return {
         success: true,
@@ -505,10 +446,8 @@ export class UserCacheService {
           { user_id: userId },
           {
             amount: Number(user.amount),
-            amountUsedSlots: Number(user.amountUsedSlots || 0),
             username: user.username,
             clan_nick: user.clan_nick,
-            jackPot: Number(user.jackPot || 0),
           },
         );
         this.logger.debug(`Force synced user ${userId} to database`);

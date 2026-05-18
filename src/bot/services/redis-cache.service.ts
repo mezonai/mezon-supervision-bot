@@ -5,19 +5,10 @@ import Redis from 'ioredis';
 export interface UserCache {
   user_id: string;
   amount: number;
-  amountUsedSlots: number;
   ban?: any[];
   username?: string;
   clan_nick?: string;
-  jackPot?: number;
-  lastUpdated: number;
   avatar?: string;
-  jackPot1k?: number;
-  jackPot3k?: number;
-}
-
-export interface BotCache {
-  jackPot: number;
   lastUpdated: number;
 }
 
@@ -26,10 +17,11 @@ export class RedisCacheService {
   private readonly logger = new Logger(RedisCacheService.name);
   private redis: Redis;
 
-  private readonly USER_PREFIX = 'user:slots:';
-  private readonly LOCK_PREFIX = 'lock:slots:';
-  private readonly COUNT_PREFIX = 'count:slots:';
-  private readonly MUTEX_PREFIX = 'mutex:slots:';
+  private readonly USER_PREFIX = 'user:bot:';
+  private readonly LOCK_PREFIX = 'lock:bot:';
+  private readonly COUNT_PREFIX = 'count:bot:';
+  private readonly MUTEX_PREFIX = 'mutex:bot:';
+  private readonly REWARD_PREFIX = 'reward:';
 
   private readonly USER_TTL = 86400; // 1 day
   private readonly LOCK_TTL = 10;
@@ -98,6 +90,27 @@ export class RedisCacheService {
       await this.redis.del(`${this.USER_PREFIX}${userId}`);
     } catch (error) {
       this.logger.error(`Error deleting user cache for ${userId}:`, error);
+    }
+  }
+
+  async setRewardCache(
+    suffix: string,
+    value: string,
+    ttlSec: number,
+  ): Promise<void> {
+    try {
+      await this.redis.setex(`${this.REWARD_PREFIX}${suffix}`, ttlSec, value);
+    } catch (error) {
+      this.logger.error(`Error setting reward cache ${suffix}:`, error);
+    }
+  }
+
+  async getRewardCache(suffix: string): Promise<string | null> {
+    try {
+      return await this.redis.get(`${this.REWARD_PREFIX}${suffix}`);
+    } catch (error) {
+      this.logger.error(`Error getting reward cache ${suffix}:`, error);
+      return null;
     }
   }
 
@@ -207,7 +220,7 @@ export class RedisCacheService {
   }
 
   async trySendWarnOnce(key: string, ttlSec: number): Promise<boolean> {
-    const warnKey = `warn:slots:${key}`;
+    const warnKey = `warn:bot:${key}`;
     const r = await this.redis.set(warnKey, '1', 'EX', ttlSec, 'NX');
     return r === 'OK';
   }
@@ -299,7 +312,7 @@ export class RedisCacheService {
         await this.redis.del(...keys);
       }
 
-      this.logger.log('All slots cache cleared');
+      this.logger.log('All user cache cleared');
     } catch (error) {
       this.logger.error('Error clearing cache:', error);
     }

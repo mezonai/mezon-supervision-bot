@@ -32,7 +32,7 @@ export class RoleCommand extends CommandMessage {
       (role) => role.id !== '1840654634100723712',
     );
     const bot = await this.userRepository.findOne({
-      where: { user_id: process.env.UTILITY_BOT_ID || '' },
+      where: { user_id: process.env.SUPERVISION_BOT_ID || '' },
     });
     if (!bot?.roleClan || !bot?.roleClan[message.clan_id || '']) {
       const content = `[Role] - You must assign role to bot!`;

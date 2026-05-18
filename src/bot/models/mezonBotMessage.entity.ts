@@ -6,12 +6,6 @@ export interface PollResult {
   emoji: string;
 }
 
-export interface LixiDetail {
-  user_id?: string;
-  username: string;
-  amount: number;
-}
-
 @Index(['messageId', 'channelId', 'userId'])
 // @Index(['messageId', 'channelId', 'deleted'])
 @Entity(TABLE.MEZON_BOT_MESSAGE)
@@ -27,6 +21,15 @@ export class MezonBotMessage {
 
   @Column({ type: 'text', nullable: true })
   channelId: string;
+
+  @Column({ type: 'text', nullable: true })
+  clanId: string;
+
+  @Column({ nullable: true })
+  isChannelPublic: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  modeMessage: number;
 
   @Column({ type: 'text', nullable: true, default: null })
   content: string;
@@ -45,7 +48,4 @@ export class MezonBotMessage {
 
   @Column('text', { array: true, nullable: true, default: null })
   roleResult: string[];
-
-  @Column({ type: 'jsonb', nullable: true, default: () => "'[]'" })
-  lixiResult: [number[], number, LixiDetail[], string];
 }

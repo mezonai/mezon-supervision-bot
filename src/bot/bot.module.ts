@@ -25,8 +25,6 @@ import { WelcomeMsgInfoCommand } from './commands/welcomeMessages/welcomeMessage
 import { RoleCommand } from './commands/selfAssignableRoles/role.command';
 import { RoleService } from './commands/selfAssignableRoles/role.service';
 import { WhiteListAddCommand } from './commands/selfAssignableRoles/whiteList';
-import { LixiCommand } from './lixi/lixi.command';
-import { LixiService } from './lixi/lixi.service';
 import { BanCommand } from './commands/ban/ban';
 import { UnbanCommand } from './commands/ban/unban';
 import { Transaction } from './models/transaction.entity';
@@ -34,6 +32,11 @@ import { UpdateCommand } from './commands/update/update.command';
 import { RedisCacheService } from './services/redis-cache.service';
 import { UserCacheService } from './services/user-cache.service';
 import { ReplyStatsService } from './services/reply-stats.service';
+import { PermissionService } from './services/permission.service';
+import { RewardSetupCommand } from './reward/reward-setup.command';
+import { RewardService } from './reward/reward.service';
+import { RewardMessageCacheService } from './reward/reward-message-cache.service';
+import { ListenerQuickMenuReward } from './listeners/quickMenu.reward.listener';
 
 @Module({
   imports: [
@@ -70,11 +73,14 @@ import { ReplyStatsService } from './services/reply-stats.service';
     RoleCommand,
     RoleService,
     WhiteListAddCommand,
-    LixiCommand,
-    LixiService,
     BanCommand,
     UnbanCommand,
     UpdateCommand,
+    PermissionService,
+    RewardSetupCommand,
+    RewardService,
+    RewardMessageCacheService,
+    ListenerQuickMenuReward,
   ],
   controllers: [],
 })

@@ -1,6 +1,6 @@
 export const TABLE = {
-  USER: 'vibot_users',
-  MEZON_BOT_MESSAGE: 'vibot_mezonBotMessage',
-  WELCOME_MESSAGE: 'vibot_welcomeMessage',
-  TRANSACTION: 'vibot_transaction',
+  USER: 'mebot_users',
+  MEZON_BOT_MESSAGE: 'mebot_mezonBotMessage',
+  WELCOME_MESSAGE: 'mebot_welcomeMessage',
+  TRANSACTION: 'mebot_transaction',
 };

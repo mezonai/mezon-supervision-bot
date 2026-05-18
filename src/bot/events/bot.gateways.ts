@@ -9,6 +9,7 @@ import {
   UserChannelRemoved,
   GiveCoffeeEvent,
   AddClanUserEvent,
+  QuickMenuEvent,
 } from 'mezon-sdk';
 
 import {
@@ -21,6 +22,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { ExtendersService } from '../services/extenders.services';
+import { RewardMessageCacheService } from '../reward/reward-message-cache.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../models/user.entity';
@@ -36,6 +38,7 @@ export class BotGateway {
     private userRepository: Repository<User>,
     private clientService: MezonClientService,
     private extendersService: ExtendersService,
+    private rewardMessageCache: RewardMessageCacheService,
     private eventEmitter: EventEmitter2,
   ) {
     this.client = this.clientService.getClient();
@@ -77,7 +80,7 @@ export class BotGateway {
     this.client.onRoleEvent(async (data) => {
       this.eventEmitter.emit(Events.RoleEvent, data);
 
-      const botId = process.env.UTILITY_BOT_ID || '';
+      const botId = process.env.SUPERVISION_BOT_ID || '';
       const clanId = data.role?.clan_id;
       const roleId = data.role?.id;
       const maxLevelPermission = data.role?.max_level_permission || 0;
@@ -168,6 +171,10 @@ export class BotGateway {
       this.eventEmitter.emit(Events.GiveCoffee, data);
     });
 
+    this.client.onQuickMenuEvent((data) => {
+      this.eventEmitter.emit(Events.QuickMenu, data);
+    });
+
     this.client.onAddClanUser(async (data: AddClanUserEvent) => {
       this.eventEmitter.emit(Events.AddClanUser, data);
       const user: any = {
@@ -198,6 +205,11 @@ export class BotGateway {
         }
       } catch (e) {
         console.log(e);
+      }
+      try {
+        await this.rewardMessageCache.rememberChannelMessage(message);
+      } catch (e) {
+        this.logger.warn('reward message cache failed', e);
       }
       this.eventEmitter.emit(Events.ChannelMessage, message);
     });

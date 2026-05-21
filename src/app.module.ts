@@ -26,7 +26,6 @@ import { APP_DATA_SOURCE_MIGRATIONS } from './database/app-migrations';
         REWARD_MAX_AMOUNT: Joi.string().optional(),
         REWARD_MAX_PER_DAY: Joi.string().optional(),
         REWARD_MENU_PREFIX: Joi.string().optional(),
-        REWARD_MENU_MAP: Joi.string().optional(),
         PORT: Joi.number().optional(),
         REDIS_HOST: Joi.string().optional(),
         REDIS_PORT: Joi.number().optional(),

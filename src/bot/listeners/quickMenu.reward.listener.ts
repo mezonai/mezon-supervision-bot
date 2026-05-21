@@ -197,17 +197,6 @@ Số dư mới: ${(result.newBalance ?? 0).toLocaleString('vi-VN')} points`;
   }
 
   private parseRewardAmount(menuName: string): number | null {
-    const mapRaw = this.configService.get<string>('REWARD_MENU_MAP');
-    if (mapRaw) {
-      for (const part of mapRaw.split(',')) {
-        const [name, value] = part.split(':').map((s) => s.trim());
-        if (name && name === menuName) {
-          const mapped = Number(value);
-          if (!isNaN(mapped) && mapped > 0) return mapped;
-        }
-      }
-    }
-
     const rewardDash = menuName.match(/^\s*reward\s*-\s*(\d+)\s*$/i);
     if (rewardDash) {
       const n = Number(rewardDash[1]);

@@ -19,6 +19,14 @@ import { APP_DATA_SOURCE_MIGRATIONS } from './database/app-migrations';
         MEZON_TOKEN: Joi.string().required(),
         SUPERVISION_BOT_ID: Joi.string().required(),
         BOT_ADMIN_IDS: Joi.string().required(),
+        // Optional: override default gateway gw.mezon.ai:443 (self-hosted / staging)
+        MEZON_GATEWAY_HOST: Joi.string().optional(),
+        MEZON_GATEWAY_PORT: Joi.string().optional(),
+        MEZON_GATEWAY_USE_SSL: Joi.string().valid('true', 'false').optional(),
+        MEZON_SOCKET_HOST: Joi.string().required(),
+        MEZON_SOCKET_USE_SSL: Joi.string().valid('true', 'false').required(),
+        // clanId:channelId[:channelType] — optional; re-join command stream after bot restart
+        MEZON_COMMAND_CHANNEL: Joi.string().optional(),
         REWARD_MAX_AMOUNT: Joi.string().optional(),
         REWARD_MAX_PER_DAY: Joi.string().optional(),
         REWARD_MENU_PREFIX: Joi.string().optional(),

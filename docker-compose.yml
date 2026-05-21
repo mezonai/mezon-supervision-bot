@@ -36,19 +36,19 @@ services:
       retries: 5
 
   # Optional: pgAdmin for database management
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: mezon-supervision-bot-pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    depends_on:
-      - postgres
-    profiles:
-      - tools
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   container_name: mezon-supervision-bot-pgadmin
+  #   restart: unless-stopped
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@admin.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   ports:
+  #     - "5050:80"
+  #   depends_on:
+  #     - postgres
+  #   profiles:
+  #     - tools
 
 volumes:
   postgres_data:

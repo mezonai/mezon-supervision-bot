@@ -22,7 +22,6 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { ExtendersService } from '../services/extenders.services';
-import { RewardMessageCacheService } from '../reward/reward-message-cache.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../models/user.entity';
@@ -38,7 +37,6 @@ export class BotGateway {
     private userRepository: Repository<User>,
     private clientService: MezonClientService,
     private extendersService: ExtendersService,
-    private rewardMessageCache: RewardMessageCacheService,
     private eventEmitter: EventEmitter2,
   ) {
     this.client = this.clientService.getClient();
@@ -151,8 +149,27 @@ export class BotGateway {
       this.eventEmitter.emit(Events.RoleAssign, data);
     });
 
-    this.client.onUserChannelAdded((user: UserChannelAddedEvent) => {
-      this.eventEmitter.emit(Events.UserChannelAdded, user);
+    this.client.onUserChannelAdded(async (event: UserChannelAddedEvent) => {
+      this.eventEmitter.emit(Events.UserChannelAdded, event);
+      const botId = process.env.SUPERVISION_BOT_ID || '';
+      const botAdded = event.users?.some((u) => String(u.user_id) === botId);
+      const isPublicChannel = !event.channel_desc?.channel_private;
+      if (
+        botAdded &&
+        isPublicChannel &&
+        event.clan_id &&
+        event.channel_desc?.channel_id
+      ) {
+        try {
+          await this.clientService.joinCommandChannel(
+            event.clan_id,
+            event.channel_desc.channel_id,
+            event.channel_desc.type ?? 1,
+          );
+        } catch (err) {
+          this.logger.warn('joinCommandChannel on UserChannelAdded failed', err);
+        }
+      }
     });
 
     this.client.onChannelDeleted((channel: ChannelDeletedEvent) => {
@@ -172,18 +189,32 @@ export class BotGateway {
     });
 
     this.client.onQuickMenuEvent((data) => {
-      this.eventEmitter.emit(Events.QuickMenu, data);
+      const payload = (data as QuickMenuEvent).quick_menu_event ?? data;
+      this.eventEmitter.emit(Events.QuickMenu, {
+        quick_menu_event: payload,
+      } as QuickMenuEvent);
     });
 
     this.client.onAddClanUser(async (data: AddClanUserEvent) => {
       this.eventEmitter.emit(Events.AddClanUser, data);
-      const user: any = {
-        user_id: data.user.user_id,
-        username: data.user.username,
-        avatar: data.user.avatar,
-        display_name: data.user.display_name,
-      };
-      await this.extendersService.addDBUser(user, data.invitor, data.clan_id);
+      if (!data?.user?.user_id) return;
+      try {
+        await this.extendersService.addDBUser(
+          {
+            user_id: data.user.user_id,
+            username: data.user.username || '',
+            avatar: data.user.avatar || '',
+            display_name: data.user.display_name,
+          },
+          data.invitor || '',
+          data.clan_id || '',
+        );
+      } catch (err) {
+        this.logger.warn(
+          `addDBUser on AddClanUser failed user_id=${data.user.user_id}`,
+          err,
+        );
+      }
     });
 
     this.client.onChannelMessage(async (message) => {
@@ -205,11 +236,6 @@ export class BotGateway {
         }
       } catch (e) {
         console.log(e);
-      }
-      try {
-        await this.rewardMessageCache.rememberChannelMessage(message);
-      } catch (e) {
-        this.logger.warn('reward message cache failed', e);
       }
       this.eventEmitter.emit(Events.ChannelMessage, message);
     });

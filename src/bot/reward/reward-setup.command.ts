@@ -20,30 +20,24 @@ export class RewardSetupCommand extends CommandMessage {
   }
 
   async execute(args: string[], message: ChannelMessage) {
-    const messageChannel = await this.getChannelMessage(message);
-
-    if (!this.permissionService.isAdmin(message.sender_id || '')) {
-      const content = '[RewardSetup] - You have no permission!';
-      return await messageChannel?.reply({
-        t: content,
-        mk: [{ type: EMarkdownType.PRE, s: 0, e: content.length }],
+    const reply = (text: string) =>
+      this.replyToMessage(message, {
+        t: text,
+        mk: [{ type: EMarkdownType.PRE, s: 0, e: text.length }],
       });
+
+    const senderId = String(message.sender_id || '');
+
+    if (!this.permissionService.isAdmin(senderId)) {
+      const content = '[RewardSetup] - You have no permission!';
+      return reply(content);
     }
 
     const bot = await this.userRepository.findOne({
       where: { user_id: process.env.SUPERVISION_BOT_ID || '' },
     });
     if (!bot) {
-      return await messageChannel?.reply({
-        t: EUserError.INVALID_USER,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: EUserError.INVALID_USER.length,
-          },
-        ],
-      });
+      return reply(EUserError.INVALID_USER);
     }
 
     const clanId = message.clan_id || '';
@@ -70,10 +64,7 @@ export class RewardSetupCommand extends CommandMessage {
         grantors.length > 0
           ? `Danh sách được reward (clan ${clanId}):\n${grantors.join(', ')}`
           : 'Chưa có ai được cấp quyền reward trong clan này.';
-      return await messageChannel?.reply({
-        t: content,
-        mk: [{ type: EMarkdownType.PRE, s: 0, e: content.length }],
-      });
+      return reply(content);
     }
 
     if (
@@ -89,10 +80,7 @@ export class RewardSetupCommand extends CommandMessage {
 Ví dụ: *rewardsetup [add] mod.alice + mod.bob
 
 Sau khi setup, grantor reward bằng cách: chuột phải tin nhắn của người nhận → chọn Quick Menu reward_<amount>.`;
-      return await messageChannel?.reply({
-        t: content,
-        mk: [{ type: EMarkdownType.PRE, s: 0, e: content.length }],
-      });
+      return reply(content);
     }
 
     const currentGrantors = bot.rewardGrantors || {};
@@ -107,10 +95,7 @@ Sau khi setup, grantor reward bằng cách: chuột phải tin nhắn của ngư
       await this.userRepository.save(bot);
       const content =
         '✅ Đã thêm vào danh sách được reward:\n' + usernames.join(', ');
-      return await messageChannel?.reply({
-        t: content,
-        mk: [{ type: EMarkdownType.PRE, s: 0, e: content.length }],
-      });
+      return reply(content);
     }
 
     if (action === 'remove') {
@@ -122,10 +107,7 @@ Sau khi setup, grantor reward bằng cách: chuột phải tin nhắn của ngư
       await this.userRepository.save(bot);
       const content =
         '✅ Đã xóa khỏi danh sách được reward:\n' + usernames.join(', ');
-      return await messageChannel?.reply({
-        t: content,
-        mk: [{ type: EMarkdownType.PRE, s: 0, e: content.length }],
-      });
+      return reply(content);
     }
   }
 }

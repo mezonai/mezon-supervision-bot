@@ -34,8 +34,8 @@ import { UserCacheService } from './services/user-cache.service';
 import { ReplyStatsService } from './services/reply-stats.service';
 import { PermissionService } from './services/permission.service';
 import { RewardSetupCommand } from './reward/reward-setup.command';
+import { RewardLeaderboardCommand } from './reward/reward-leaderboard.command';
 import { RewardService } from './reward/reward.service';
-import { RewardMessageCacheService } from './reward/reward-message-cache.service';
 import { ListenerQuickMenuReward } from './listeners/quickMenu.reward.listener';
 
 @Module({
@@ -78,8 +78,8 @@ import { ListenerQuickMenuReward } from './listeners/quickMenu.reward.listener';
     UpdateCommand,
     PermissionService,
     RewardSetupCommand,
+    RewardLeaderboardCommand,
     RewardService,
-    RewardMessageCacheService,
     ListenerQuickMenuReward,
   ],
   controllers: [],

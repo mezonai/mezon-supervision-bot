@@ -28,9 +28,9 @@ export class PermissionService {
     this.adminIdSet = new Set(ids);
   }
 
-  isAdmin(userId: string): boolean {
-    if (!userId) return false;
-    return this.adminIdSet.has(userId);
+  isAdmin(userId: string | number | undefined): boolean {
+    if (userId === undefined || userId === null || userId === '') return false;
+    return this.adminIdSet.has(String(userId));
   }
 
   getAdminIds(): string[] {

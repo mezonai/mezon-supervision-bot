@@ -21,7 +21,6 @@ export class RedisCacheService {
   private readonly LOCK_PREFIX = 'lock:bot:';
   private readonly COUNT_PREFIX = 'count:bot:';
   private readonly MUTEX_PREFIX = 'mutex:bot:';
-  private readonly REWARD_PREFIX = 'reward:';
 
   private readonly USER_TTL = 86400; // 1 day
   private readonly LOCK_TTL = 10;
@@ -90,27 +89,6 @@ export class RedisCacheService {
       await this.redis.del(`${this.USER_PREFIX}${userId}`);
     } catch (error) {
       this.logger.error(`Error deleting user cache for ${userId}:`, error);
-    }
-  }
-
-  async setRewardCache(
-    suffix: string,
-    value: string,
-    ttlSec: number,
-  ): Promise<void> {
-    try {
-      await this.redis.setex(`${this.REWARD_PREFIX}${suffix}`, ttlSec, value);
-    } catch (error) {
-      this.logger.error(`Error setting reward cache ${suffix}:`, error);
-    }
-  }
-
-  async getRewardCache(suffix: string): Promise<string | null> {
-    try {
-      return await this.redis.get(`${this.REWARD_PREFIX}${suffix}`);
-    } catch (error) {
-      this.logger.error(`Error getting reward cache ${suffix}:`, error);
-      return null;
     }
   }
 

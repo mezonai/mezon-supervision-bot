@@ -17,7 +17,7 @@ export class WelcomeMsgCommand extends CommandMessage {
   }
 
   async execute(args: string[], message: ChannelMessage) {
-    if (message.sender_id !== '1827994776956309504') return;
+    if (message.sender_id !== '2016174228608389120') return;
     const messageChannel = await this.getChannelMessage(message);
     let messageContent =
       'welcome message content is not given! \n Example: *welcomemsg welcome message content \n [username]: to get the user name \n [clanname]: to get clan name';

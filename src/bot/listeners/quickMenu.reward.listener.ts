@@ -10,7 +10,6 @@ import { PermissionService } from '../services/permission.service';
 import { UserCacheService } from '../services/user-cache.service';
 import { RedisCacheService } from '../services/redis-cache.service';
 import { RewardService } from '../reward/reward.service';
-import { RewardMessageCacheService } from '../reward/reward-message-cache.service';
 import { FuncType } from '../constants/configs';
 
 type QuickMenuPayload = QuickMenuEvent['quick_menu_event'];
@@ -27,20 +26,25 @@ export class ListenerQuickMenuReward {
     private permissionService: PermissionService,
     private userCacheService: UserCacheService,
     private rewardService: RewardService,
-    private rewardMessageCache: RewardMessageCacheService,
     private redisCacheService: RedisCacheService,
   ) {}
 
   @OnEvent(Events.QuickMenu)
-  async handleQuickMenuReward(rawEvent: QuickMenuEvent | QuickMenuPayload) {
+  async handleQuickMenuReward(rawEvent: QuickMenuEvent) {
     try {
       const event = this.normalizeEvent(rawEvent);
-      if (!event?.menu_name || !event.message) return;
+      if (!event?.menu_name || !event.message) {
+        this.logger.debug('QuickMenu ignored: missing menu_name or message');
+        return;
+      }
 
       const amount = this.parseRewardAmount(event.menu_name);
-      if (amount === null) return;
+      if (amount === null) {
+        this.logger.debug(`QuickMenu ignored: unknown menu ${event.menu_name}`);
+        return;
+      }
 
-      const msg = event.message as Record<string, unknown>;
+      const msg = event.message;
       const clanId = String(msg.clan_id || '');
       const channelId = String(msg.channel_id || '');
       if (!clanId || !channelId) return;
@@ -60,17 +64,15 @@ export class ListenerQuickMenuReward {
         return;
       }
 
-      const grantor = await this.resolveGrantor(msg, rawEvent);
+      const grantor = this.resolveGrantor(event);
       if (!grantor.userId) {
         this.logger.warn(
-          `Quick Menu event missing grantor sender_id. Mezon server may not enrich the envelope on this build. Raw keys: ${Object.keys(
-            (rawEvent as Record<string, unknown>) || {},
-          ).join(',')}`,
+          `Quick Menu event missing grantor sender_id (menu_name=${event.menu_name})`,
         );
         await this.replyChannel(
           clanId,
           channelId,
-          'Không xác định được người thực hiện reward. Cấu hình Mezon server chưa hỗ trợ Quick Menu reward.',
+          'Không xác định được người thực hiện reward.',
         );
         return;
       }
@@ -84,6 +86,9 @@ export class ListenerQuickMenuReward {
           bot,
         )
       ) {
+        this.logger.warn(
+          `QuickMenu denied grantor=${grantor.userId} clan=${clanId}`,
+        );
         await this.replyChannel(
           clanId,
           channelId,
@@ -105,11 +110,7 @@ export class ListenerQuickMenuReward {
         return;
       }
 
-      const recipient = await this.resolveRecipient(
-        msg,
-        channelId,
-        grantor.userId,
-      );
+      const recipient = this.resolveRecipient(event, grantor.userId);
       if (!recipient.userId) {
         await this.replyChannel(
           clanId,
@@ -130,7 +131,10 @@ export class ListenerQuickMenuReward {
 
       const lockKey = `reward_qm:${clanId}:${channelId}:${event.menu_name}:${recipient.userId}:${grantor.userId}`;
       const locked = await this.redisCacheService.acquireLock(lockKey, 15);
-      if (!locked) return;
+      if (!locked) {
+        this.logger.warn(`QuickMenu duplicate lock ${lockKey}`);
+        return;
+      }
 
       let recipientUsername = recipient.username;
       if (!recipientUsername) {
@@ -152,8 +156,7 @@ export class ListenerQuickMenuReward {
 
       const result = await this.rewardService.creditRecipient({
         rewarderId: grantor.userId,
-        rewarderUsername:
-          grantor.username || grantor.userId,
+        rewarderUsername: grantor.username || grantor.userId,
         recipientId: recipient.userId,
         recipientUsername,
         amount,
@@ -162,6 +165,7 @@ export class ListenerQuickMenuReward {
       });
 
       if (!result.success) {
+        this.logger.warn(`QuickMenu credit failed: ${result.error}`);
         await this.replyChannel(
           clanId,
           channelId,
@@ -170,12 +174,16 @@ export class ListenerQuickMenuReward {
         return;
       }
 
+      this.logger.log(
+        `QuickMenu reward ok amount=${amount} recipient=${recipient.userId} tx=${result.transactionId}`,
+      );
+
       const displayRecipient = recipientUsername || recipient.userId;
       const content = `🎁 Reward thành công (Quick Menu)
 Người reward: ${grantor.username || grantor.userId}
 Người nhận: ${displayRecipient}
-Số điểm: ${amount.toLocaleString('vi-VN')} mezon đồng
-Số dư mới: ${(result.newBalance ?? 0).toLocaleString('vi-VN')}`;
+Số điểm: ${amount.toLocaleString('vi-VN')} points
+Số dư mới: ${(result.newBalance ?? 0).toLocaleString('vi-VN')} points`;
 
       await this.replyChannel(clanId, channelId, content);
     } catch (error) {
@@ -183,14 +191,9 @@ Số dư mới: ${(result.newBalance ?? 0).toLocaleString('vi-VN')}`;
     }
   }
 
-  private normalizeEvent(
-    raw: QuickMenuEvent | QuickMenuPayload,
-  ): QuickMenuPayload | null {
-    if (!raw) return null;
-    const wrapped = raw as QuickMenuEvent;
-    if (wrapped.quick_menu_event) return wrapped.quick_menu_event;
-    if ((raw as QuickMenuPayload).menu_name) return raw as QuickMenuPayload;
-    return null;
+  private normalizeEvent(raw: QuickMenuEvent): QuickMenuPayload | null {
+    if (!raw?.quick_menu_event) return null;
+    return raw.quick_menu_event;
   }
 
   private parseRewardAmount(menuName: string): number | null {
@@ -205,6 +208,12 @@ Số dư mới: ${(result.newBalance ?? 0).toLocaleString('vi-VN')}`;
       }
     }
 
+    const rewardDash = menuName.match(/^\s*reward\s*-\s*(\d+)\s*$/i);
+    if (rewardDash) {
+      const n = Number(rewardDash[1]);
+      if (!isNaN(n) && n > 0) return n;
+    }
+
     const prefix =
       this.configService.get<string>('REWARD_MENU_PREFIX') || 'reward_';
     const lowerName = menuName.toLowerCase();
@@ -217,20 +226,23 @@ Số dư mới: ${(result.newBalance ?? 0).toLocaleString('vi-VN')}`;
     return amount;
   }
 
-  private async resolveGrantor(
-    msg: Record<string, unknown>,
-    rawEvent: unknown,
-  ): Promise<{ userId?: string; username?: string }> {
-    const raw = rawEvent as Record<string, unknown>;
-    const nested = (raw?.quick_menu_event || raw) as Record<string, unknown>;
-    const senderId =
-      (nested.sender_id as string) || (nested.user_id as string);
+  /** Grantor = socket session user (mezon-sock sets sender_id). */
+  private resolveGrantor(
+    event: QuickMenuPayload,
+  ): { userId?: string; username?: string } {
+    const id = event.sender_id;
+    if (!id || String(id) === '0') return {};
+    return { userId: String(id) };
+  }
 
-    if (senderId && senderId !== '0') {
-      return { userId: senderId };
-    }
-
-    return {};
+  /** Recipient = target message author (client + sock message_sender_id). */
+  private resolveRecipient(
+    event: QuickMenuPayload,
+    grantorId: string,
+  ): { userId?: string; username?: string } {
+    const id = event.message_sender_id;
+    if (!id || String(id) === '0' || String(id) === grantorId) return {};
+    return { userId: String(id) };
   }
 
   private async resolveGrantorUsername(grantor: {
@@ -268,47 +280,6 @@ Số dư mới: ${(result.newBalance ?? 0).toLocaleString('vi-VN')}`;
     }
 
     return undefined;
-  }
-
-  private async resolveRecipient(
-    msg: Record<string, unknown>,
-    channelId: string,
-    grantorId?: string,
-  ): Promise<{ userId?: string; username?: string }> {
-    const messageId = (msg.id as string) || (msg.message_id as string);
-    if (messageId) {
-      const byId = await this.rewardMessageCache.getSenderByMessageId(
-        channelId,
-        messageId,
-      );
-      if (byId?.sender_id && byId.sender_id !== grantorId) return byId;
-    }
-
-    const byContent = await this.rewardMessageCache.getSenderByContent(
-      channelId,
-      msg.content,
-    );
-    if (byContent?.sender_id && byContent.sender_id !== grantorId)
-      return byContent;
-
-    const references =
-      (msg.references as Array<{ message_sender_id?: string }>) || [];
-    for (let i = references.length - 1; i >= 0; i--) {
-      const ref = references[i];
-      const refId = ref?.message_sender_id;
-      if (refId && refId !== '0' && refId !== grantorId) {
-        return { userId: refId };
-      }
-    }
-
-    const mentions = (msg.mentions as Array<{ user_id?: string }>) || [];
-    for (const m of mentions) {
-      if (m?.user_id && m.user_id !== grantorId) {
-        return { userId: m.user_id };
-      }
-    }
-
-    return {};
   }
 
   private async replyChannel(

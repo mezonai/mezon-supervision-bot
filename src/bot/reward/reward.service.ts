@@ -5,6 +5,7 @@ import { DataSource, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { EMarkdownType } from 'mezon-sdk';
 import { Transaction } from '../models/transaction.entity';
+import { User } from '../models/user.entity';
 import { UserCacheService } from '../services/user-cache.service';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 
@@ -25,6 +26,20 @@ export interface RewardCreditResult {
   transactionId?: string;
 }
 
+export interface LeaderboardEntry {
+  rank: number;
+  userId: string;
+  displayName: string;
+  amount: number;
+}
+
+export interface UserPointsRank {
+  rank: number;
+  userId: string;
+  displayName: string;
+  amount: number;
+}
+
 @Injectable()
 export class RewardService {
   private readonly logger = new Logger(RewardService.name);
@@ -32,6 +47,8 @@ export class RewardService {
   constructor(
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
     private userCacheService: UserCacheService,
     private dataSource: DataSource,
     private configService: ConfigService,
@@ -50,6 +67,58 @@ export class RewardService {
     if (!raw) return undefined;
     const n = Number(raw);
     return !isNaN(n) && n > 0 ? n : undefined;
+  }
+
+  private getBotUserId(): string {
+    return process.env.SUPERVISION_BOT_ID || '';
+  }
+
+  private displayName(user: User): string {
+    return user.clan_nick || user.username || user.user_id;
+  }
+
+  private leaderboardBaseQuery() {
+    const botId = this.getBotUserId();
+    const qb = this.userRepository
+      .createQueryBuilder('u')
+      .where('(u.bot IS NULL OR u.bot = false)')
+      .andWhere('COALESCE(u.amount, 0) > 0');
+    if (botId) {
+      qb.andWhere('u.user_id != :botId', { botId });
+    }
+    return qb;
+  }
+
+  async getPointsLeaderboard(limit: number): Promise<LeaderboardEntry[]> {
+    const rows = await this.leaderboardBaseQuery()
+      .orderBy('u.amount', 'DESC')
+      .addOrderBy('u.username', 'ASC')
+      .limit(limit)
+      .getMany();
+
+    return rows.map((user, index) => ({
+      rank: index + 1,
+      userId: user.user_id,
+      displayName: this.displayName(user),
+      amount: Number(user.amount) || 0,
+    }));
+  }
+
+  async getUserPointsRank(userId: string): Promise<UserPointsRank | null> {
+    const user = await this.userRepository.findOne({ where: { user_id: userId } });
+    if (!user) return null;
+
+    const amount = Number(user.amount) || 0;
+    const higherCount = await this.leaderboardBaseQuery()
+      .andWhere('u.amount > :amount', { amount })
+      .getCount();
+
+    return {
+      rank: higherCount + 1,
+      userId: user.user_id,
+      displayName: this.displayName(user),
+      amount,
+    };
   }
 
   async getGrantorDailyTotal(rewarderId: string): Promise<number> {
@@ -142,7 +211,7 @@ export class RewardService {
     try {
       const client = this.clientService.getClient();
       const user = await client.users.fetch(recipientId);
-      const dmText = `🎁 Bạn nhận ${amount.toLocaleString('vi-VN')} mezon đồng từ ${rewarderUsername}!`;
+      const dmText = `🎁 Bạn nhận ${amount.toLocaleString('vi-VN')} points rewarded từ ${rewarderUsername}!`;
       await user?.sendDM({
         t: dmText,
         mk: [{ type: EMarkdownType.PRE, s: 0, e: dmText.length }],

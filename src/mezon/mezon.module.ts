@@ -1,15 +1,10 @@
-import { DynamicModule, Global, Logger, Module } from '@nestjs/common';
+import { DynamicModule, Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   MezonClientBootConfig,
   MezonClientService,
 } from './services/mezon-client.service';
 import { MezonModuleAsyncOptions } from './dto/MezonModuleAsyncOptions';
-import {
-  parseCommandChannel,
-  parseSocketUseSsl,
-  requireSocketHost,
-} from './mezon-socket.config';
 
 @Global()
 @Module({})
@@ -39,37 +34,8 @@ export class MezonModule {
               clientConfig.useSSL = gatewaySsl === 'true';
             }
 
-            const socketEnv = {
-              hostPort: requireSocketHost(
-                configService.get<string>('MEZON_SOCKET_HOST'),
-              ),
-              useSSL: parseSocketUseSsl(
-                configService.get<string>('MEZON_SOCKET_USE_SSL'),
-              ),
-            };
-
-            const client = new MezonClientService(clientConfig, socketEnv);
+            const client = new MezonClientService(clientConfig);
             await client.initializeClient();
-
-            const commandChannel = parseCommandChannel(
-              configService.get<string>('MEZON_COMMAND_CHANNEL'),
-            );
-            if (commandChannel) {
-              try {
-                await client.joinCommandChannel(
-                  commandChannel.clanId,
-                  commandChannel.channelId,
-                  commandChannel.channelType,
-                );
-              } catch (err) {
-                Logger.error(
-                  `MEZON_COMMAND_CHANNEL join failed (${MezonClientService.describeSocketError(err)})`,
-                  err instanceof Error ? err.stack : undefined,
-                  MezonModule.name,
-                );
-              }
-            }
-
             return client;
           },
           inject: [ConfigService],

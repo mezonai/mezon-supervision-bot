@@ -35,11 +35,11 @@ export class BotGateway {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    private clientService: MezonClientService,
+    clientService: MezonClientService,
     private extendersService: ExtendersService,
     private eventEmitter: EventEmitter2,
   ) {
-    this.client = this.clientService.getClient();
+    this.client = clientService.getClient();
   }
 
   initEvent() {
@@ -149,27 +149,8 @@ export class BotGateway {
       this.eventEmitter.emit(Events.RoleAssign, data);
     });
 
-    this.client.onUserChannelAdded(async (event: UserChannelAddedEvent) => {
+    this.client.onUserChannelAdded((event: UserChannelAddedEvent) => {
       this.eventEmitter.emit(Events.UserChannelAdded, event);
-      const botId = process.env.SUPERVISION_BOT_ID || '';
-      const botAdded = event.users?.some((u) => String(u.user_id) === botId);
-      const isPublicChannel = !event.channel_desc?.channel_private;
-      if (
-        botAdded &&
-        isPublicChannel &&
-        event.clan_id &&
-        event.channel_desc?.channel_id
-      ) {
-        try {
-          await this.clientService.joinCommandChannel(
-            event.clan_id,
-            event.channel_desc.channel_id,
-            event.channel_desc.type ?? 1,
-          );
-        } catch (err) {
-          this.logger.warn('joinCommandChannel on UserChannelAdded failed', err);
-        }
-      }
     });
 
     this.client.onChannelDeleted((channel: ChannelDeletedEvent) => {

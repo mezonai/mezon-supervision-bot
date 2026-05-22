@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { MezonClient } from 'mezon-sdk';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../models/user.entity';
@@ -25,6 +26,83 @@ export class ExtendersService {
     private redisCacheService: RedisCacheService,
   ) {}
 
+  async ensureBotUser(client: MezonClient): Promise<User | null> {
+    const botId = process.env.SUPERVISION_BOT_ID?.trim();
+    if (!botId) {
+      this.logger.warn('SUPERVISION_BOT_ID is empty — skip bot user seed');
+      return null;
+    }
+
+    const sessionUserId = this.getSessionUserId(client);
+    if (sessionUserId && sessionUserId !== botId) {
+      this.logger.error(
+        `SUPERVISION_BOT_ID (${botId}) does not match session user_id (${sessionUserId}). Use appId from developer console.`,
+      );
+      return null;
+    }
+    if (!client.clientId || client.clientId !== botId) {
+      this.logger.error(
+        `SUPERVISION_BOT_ID (${botId}) must match SDK clientId (${client.clientId || 'missing'}). Check MEZON_TOKEN pairs with this appId.`,
+      );
+      return null;
+    }
+
+    let bot = await this.userRepository.findOne({ where: { user_id: botId } });
+    if (bot) {
+      if (!bot.bot) {
+        bot.bot = true;
+        await this.userRepository.save(bot);
+      }
+      await this.userCacheService.createUserIfNotExists(
+        botId,
+        bot.username,
+        bot.clan_nick,
+      );
+      this.logger.log(`mebot_users bot ready user_id=${botId}`);
+      return bot;
+    }
+
+    bot = this.userRepository.create({
+      user_id: botId,
+      username: process.env.SUPERVISION_BOT_USERNAME?.trim() || `bot_${botId}`,
+      avatar: '',
+      bot: true,
+      display_name: process.env.SUPERVISION_BOT_USERNAME?.trim() || '',
+      clan_nick: '',
+      deactive: false,
+      botPing: false,
+      createdAt: Date.now(),
+      amount: 0,
+      rewardGrantors: {},
+      invitor: {},
+      ban: [],
+    });
+
+    await this.userRepository.save(bot);
+    await this.userCacheService.createUserIfNotExists(
+      botId,
+      bot.username,
+      bot.clan_nick,
+    );
+    this.logger.log(`mebot_users bot inserted user_id=${botId}`);
+    return bot;
+  }
+
+  private getSessionUserId(client: MezonClient): string | undefined {
+    const session = (
+      client as MezonClient & {
+        sessionManager?: { getSession(): { user_id?: string | number } | undefined };
+      }
+    ).sessionManager?.getSession();
+    const raw = session?.user_id;
+    if (raw === undefined || raw === null || raw === '') {
+      return undefined;
+    }
+    const id = String(raw);
+    if (id === '0') return undefined;
+    return id;
+  }
+
   async addDBUser(
     user: SharedUserProperties,
     invitor: string,
@@ -49,12 +127,6 @@ export class ExtendersService {
       }
       if (invitor && clan_id) {
         existing.invitor = { ...(existing.invitor || {}), [clan_id]: invitor };
-        const clanWhitelist = new Set(existing.whitelist?.[clan_id] || []);
-        clanWhitelist.add(invitor);
-        existing.whitelist = {
-          ...(existing.whitelist || {}),
-          [clan_id]: [...clanWhitelist],
-        };
       }
       await this.userRepository.save(existing);
       await this.userCacheService.updateUserCache(user.user_id, {
@@ -82,7 +154,6 @@ export class ExtendersService {
       botPing: false,
       createdAt: Date.now(),
       amount: 0,
-      whitelist: invitor && clan_id ? { [clan_id]: [invitor] } : {},
       invitor: invitor && clan_id ? { [clan_id]: invitor } : {},
     });
 

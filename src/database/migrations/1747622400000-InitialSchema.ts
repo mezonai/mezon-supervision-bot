@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Fresh-install schema for this bot fork (no incremental ALTERs).
+ * Fresh-install schema for supervision bot (local/dev).
  * TypeORM records executed migrations in table `migrations_info` (see AppModule).
  */
 export class InitialSchema1747622400000 implements MigrationInterface {
@@ -19,14 +19,11 @@ export class InitialSchema1747622400000 implements MigrationInterface {
         "last_message_id" text,
         "last_message_time" numeric,
         "last_mentioned_message_id" text,
-        "roles" text array,
         "last_bot_message_id" text,
         "deactive" boolean DEFAULT false,
         "botPing" boolean NOT NULL DEFAULT false,
         "createdAt" numeric,
         "amount" numeric DEFAULT 0,
-        "roleClan" jsonb DEFAULT '{}'::jsonb,
-        "whitelist" jsonb DEFAULT '{}'::jsonb,
         "rewardGrantors" jsonb DEFAULT '{}'::jsonb,
         "invitor" jsonb DEFAULT '{}'::jsonb,
         "ban" jsonb DEFAULT '[]'::jsonb,
@@ -58,30 +55,6 @@ export class InitialSchema1747622400000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "mebot_mezonBotMessage" (
-        "id" SERIAL NOT NULL,
-        "messageId" text,
-        "userId" text,
-        "channelId" text,
-        "clanId" text,
-        "isChannelPublic" boolean,
-        "modeMessage" integer,
-        "content" text,
-        "pollResult" text array,
-        "deleted" boolean DEFAULT false,
-        "createAt" numeric,
-        "expireAt" numeric,
-        "roleResult" text array,
-        CONSTRAINT "PK_mebot_mezonBotMessage" PRIMARY KEY ("id")
-      )
-    `);
-
-    await queryRunner.query(`
-      CREATE INDEX "IDX_mebot_mezonBotMessage_lookup"
-      ON "mebot_mezonBotMessage" ("messageId", "channelId", "userId")
-    `);
-
-    await queryRunner.query(`
       CREATE TABLE "mebot_welcomeMessage" (
         "botId" character varying NOT NULL,
         "content" text,
@@ -98,8 +71,6 @@ export class InitialSchema1747622400000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_mebot_welcomeMessage_botId"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "mebot_welcomeMessage"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_mebot_mezonBotMessage_lookup"`);
-    await queryRunner.query(`DROP TABLE IF EXISTS "mebot_mezonBotMessage"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_mebot_transaction_id_transactionId"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "mebot_transaction"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_mebot_users_bot_profile"`);

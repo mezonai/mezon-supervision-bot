@@ -38,9 +38,6 @@ export class User {
   @Column({ type: 'text', nullable: true })
   last_mentioned_message_id: string;
 
-  @Column('text', { array: true, nullable: true })
-  roles: string[];
-
   @Column({ type: 'text', nullable: true })
   last_bot_message_id: string;
 
@@ -55,21 +52,6 @@ export class User {
 
   @Column({ type: 'numeric', nullable: true, default: 0 })
   amount: number;
-
-  @Column({ type: 'jsonb', nullable: true, default: {} })
-  roleClan: {
-    [clanId: string]: {
-      roles: {
-        roleId: string;
-        maxLevelPermission: number;
-      }[];
-      roleMax?: string;
-    };
-  };
-  @Column({ type: 'jsonb', nullable: true, default: {} })
-  whitelist: {
-    [clanId: string]: string[];
-  };
 
   @Column({ type: 'jsonb', nullable: true, default: {} })
   rewardGrantors: {

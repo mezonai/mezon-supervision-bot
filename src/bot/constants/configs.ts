@@ -29,12 +29,6 @@ export const MEZON_EMBED_FOOTER = {
   icon_url: MEZON_IMAGE_URL,
 };
 
-export enum EmbebButtonType {
-  CONFIRM = 'CONFIRM',
-  CANCEL = 'CANCEL',
-  SAVE = 'SAVE',
-}
-
 export enum FuncType {
   REWARD = 'reward',
   ALL = 'all',

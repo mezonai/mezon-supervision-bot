@@ -8,7 +8,6 @@ import { ConfigService } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { User } from './models/user.entity';
 import { ExtendersService } from './services/extenders.services';
-import { BotBootstrapService } from './services/bot-bootstrap.service';
 import { DynamicCommandService } from './services/dynamic.service';
 import { HelpCommand } from './commands/help/help.command';
 import { BotGateway } from './events/bot.gateways';
@@ -52,7 +51,6 @@ import { ListenerQuickMenuReward } from './listeners/quickMenu.reward.listener';
     QRCodeCommand,
     ConfigService,
     ExtendersService,
-    BotBootstrapService,
     DynamicCommandService,
     RedisCacheService,
     UserCacheService,

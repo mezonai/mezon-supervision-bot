@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MezonClient } from 'mezon-sdk';
+import { fetchUserForDm } from '../mezon-dm.util';
 
 export type MezonClientBootConfig = ConstructorParameters<typeof MezonClient>[0];
 
@@ -31,6 +32,11 @@ export class MezonClientService {
 
   getClient() {
     return this.client;
+  }
+
+  /** SDK AddClanUser caches User without dmChannelId; delete cache then fetch creates DM. */
+  fetchUserForDm(userId: string) {
+    return fetchUserForDm(this.client, userId);
   }
 
   private static parseLoginSession(

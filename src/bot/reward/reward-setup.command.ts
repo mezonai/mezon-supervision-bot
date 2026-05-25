@@ -7,6 +7,7 @@ import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { EUserError } from 'src/bot/constants/error';
 import { PermissionService } from 'src/bot/services/permission.service';
+import { RewardGrantorService } from './reward-grantor.service';
 
 @Command('rewardsetup')
 export class RewardSetupCommand extends CommandMessage {
@@ -15,6 +16,7 @@ export class RewardSetupCommand extends CommandMessage {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private permissionService: PermissionService,
+    private rewardGrantorService: RewardGrantorService,
   ) {
     super(clientService);
   }
@@ -59,10 +61,15 @@ export class RewardSetupCommand extends CommandMessage {
     }
 
     if (action === 'list') {
-      const grantors = bot.rewardGrantors?.[clanId] || [];
+      const grantors = await this.rewardGrantorService.listByClan(clanId);
       const content =
         grantors.length > 0
-          ? `Danh sách được reward (clan ${clanId}):\n${grantors.join(', ')}`
+          ? `Danh sách được reward (clan ${clanId}):\n${grantors
+              .map(
+                (entry) =>
+                  `- ${entry.displayName} (${entry.rewarderId})`,
+              )
+              .join('\n')}`
           : 'Chưa có ai được cấp quyền reward trong clan này.';
       return reply(content);
     }
@@ -83,31 +90,44 @@ Sau khi setup, grantor reward bằng cách: chuột phải tin nhắn của ngư
       return reply(content);
     }
 
-    const currentGrantors = bot.rewardGrantors || {};
-    const clanGrantors = new Set(currentGrantors[clanId] || []);
-
     if (action === 'add') {
-      for (const username of usernames) {
-        clanGrantors.add(username.trim());
+      const result = await this.rewardGrantorService.addRewarders(
+        clanId,
+        usernames,
+        senderId,
+      );
+
+      const lines = ['✅ Đã thêm vào danh sách được reward:'];
+      if (result.added.length > 0) {
+        lines.push(result.added.join(', '));
       }
-      currentGrantors[clanId] = Array.from(clanGrantors);
-      bot.rewardGrantors = currentGrantors;
-      await this.userRepository.save(bot);
-      const content =
-        '✅ Đã thêm vào danh sách được reward:\n' + usernames.join(', ');
-      return reply(content);
+      if (result.skipped.length > 0) {
+        lines.push(`Đã có sẵn: ${result.skipped.join(', ')}`);
+      }
+      if (result.notFound.length > 0) {
+        lines.push(
+          `Không tìm thấy user (cần từng nhắn bot trước): ${result.notFound.join(', ')}`,
+        );
+      }
+
+      return reply(lines.join('\n'));
     }
 
     if (action === 'remove') {
-      for (const username of usernames) {
-        clanGrantors.delete(username.trim());
+      const result = await this.rewardGrantorService.removeRewarders(
+        clanId,
+        usernames,
+      );
+
+      const lines = ['✅ Đã xóa khỏi danh sách được reward:'];
+      if (result.removed.length > 0) {
+        lines.push(result.removed.join(', '));
       }
-      currentGrantors[clanId] = Array.from(clanGrantors);
-      bot.rewardGrantors = currentGrantors;
-      await this.userRepository.save(bot);
-      const content =
-        '✅ Đã xóa khỏi danh sách được reward:\n' + usernames.join(', ');
-      return reply(content);
+      if (result.notFound.length > 0) {
+        lines.push(`Không tìm thấy trong danh sách: ${result.notFound.join(', ')}`);
+      }
+
+      return reply(lines.join('\n'));
     }
   }
 }

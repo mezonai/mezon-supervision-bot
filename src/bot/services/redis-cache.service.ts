@@ -17,10 +17,10 @@ export class RedisCacheService {
   private readonly logger = new Logger(RedisCacheService.name);
   private redis: Redis;
 
-  private readonly USER_PREFIX = 'user:bot:';
-  private readonly LOCK_PREFIX = 'lock:bot:';
-  private readonly COUNT_PREFIX = 'count:bot:';
-  private readonly MUTEX_PREFIX = 'mutex:bot:';
+  private readonly USER_PREFIX = 'user:supervision:';
+  private readonly LOCK_PREFIX = 'lock:supervision:';
+  private readonly COUNT_PREFIX = 'count:supervision:';
+  private readonly MUTEX_PREFIX = 'mutex:supervision:';
 
   private readonly USER_TTL = 86400; // 1 day
   private readonly LOCK_TTL = 10;
@@ -198,7 +198,7 @@ export class RedisCacheService {
   }
 
   async trySendWarnOnce(key: string, ttlSec: number): Promise<boolean> {
-    const warnKey = `warn:bot:${key}`;
+    const warnKey = `warn:supervision:${key}`;
     const r = await this.redis.set(warnKey, '1', 'EX', ttlSec, 'NX');
     return r === 'OK';
   }
@@ -208,6 +208,19 @@ export class RedisCacheService {
       await this.redis.del(`${this.LOCK_PREFIX}${key}`);
     } catch (error) {
       this.logger.error(`Error releasing lock for ${key}:`, error);
+    }
+  }
+
+  async listAllUserCaches(): Promise<Map<string, UserCache>> {
+    try {
+      const keys = await this.redis.keys(`${this.USER_PREFIX}*`);
+      if (keys.length === 0) return new Map();
+
+      const userIds = keys.map((key) => key.slice(this.USER_PREFIX.length));
+      return await this.getUserCacheBatch(userIds);
+    } catch (error) {
+      this.logger.error('Error listing all user caches:', error);
+      return new Map();
     }
   }
 

@@ -79,12 +79,10 @@ export class ListenerQuickMenuReward {
       grantor.username = await this.resolveGrantorUsername(grantor);
 
       if (
-        !this.permissionService.canRewardGrantor(
+        !(await this.permissionService.canRewardGrantor(
           grantor.userId,
-          grantor.username,
           clanId,
-          bot,
-        )
+        ))
       ) {
         this.logger.warn(
           `QuickMenu denied grantor=${grantor.userId} clan=${clanId}`,
@@ -110,7 +108,19 @@ export class ListenerQuickMenuReward {
         return;
       }
 
-      const recipient = this.resolveRecipient(event, grantor.userId);
+      const recipient = this.resolveRecipient(event);
+      if (
+        recipient.userId &&
+        recipient.userId === grantor.userId
+      ) {
+        await this.replyChannel(
+          clanId,
+          channelId,
+          'Không thể reward chính mình.',
+        );
+        return;
+      }
+
       if (!recipient.userId) {
         await this.replyChannel(
           clanId,
@@ -120,72 +130,67 @@ export class ListenerQuickMenuReward {
         return;
       }
 
-      if (recipient.userId === grantor.userId) {
-        await this.replyChannel(
-          clanId,
-          channelId,
-          'Không thể reward chính mình.',
-        );
-        return;
-      }
-
       const lockKey = `reward_qm:${clanId}:${channelId}:${event.menu_name}:${recipient.userId}:${grantor.userId}`;
-      const locked = await this.redisCacheService.acquireLock(lockKey, 15);
-      if (!locked) {
+      const lockAcquired = await this.redisCacheService.acquireLock(lockKey, 10);
+      if (!lockAcquired) {
         this.logger.warn(`QuickMenu duplicate lock ${lockKey}`);
         return;
       }
 
-      let recipientUsername = recipient.username;
-      if (!recipientUsername) {
-        const dbUser = await this.userRepository.findOne({
-          where: { user_id: recipient.userId },
-        });
-        recipientUsername = dbUser?.username;
+      try {
+        let recipientUsername = recipient.username;
         if (!recipientUsername) {
-          try {
-            const fetched = await this.clientService
-              .getClient()
-              .users.fetch(recipient.userId);
-            recipientUsername = fetched?.username;
-          } catch {
-            // optional
+          const dbUser = await this.userRepository.findOne({
+            where: { user_id: recipient.userId },
+          });
+          recipientUsername = dbUser?.username;
+          if (!recipientUsername) {
+            try {
+              const fetched = await this.clientService
+                .getClient()
+                .users.fetch(recipient.userId);
+              recipientUsername = fetched?.username;
+            } catch {
+              // optional
+            }
           }
         }
-      }
 
-      const result = await this.rewardService.creditRecipient({
-        rewarderId: grantor.userId,
-        rewarderUsername: grantor.username || grantor.userId,
-        recipientId: recipient.userId,
-        recipientUsername,
-        amount,
-        clanId,
-        note: `quick_menu:${event.menu_name}`,
-      });
-
-      if (!result.success) {
-        this.logger.warn(`QuickMenu credit failed: ${result.error}`);
-        await this.replyChannel(
+        const result = await this.rewardService.creditRecipient({
+          rewarderId: grantor.userId,
+          rewarderUsername: grantor.username || grantor.userId,
+          recipientId: recipient.userId,
+          recipientUsername,
+          amount,
           clanId,
-          channelId,
-          result.error || 'Reward thất bại.',
+          note: `quick_menu:${event.menu_name}`,
+        });
+
+        if (!result.success) {
+          this.logger.warn(`QuickMenu credit failed: ${result.error}`);
+          await this.replyChannel(
+            clanId,
+            channelId,
+            result.error || 'Reward thất bại.',
+          );
+          return;
+        }
+
+        this.logger.log(
+          `QuickMenu reward ok amount=${amount} recipient=${recipient.userId} tx=${result.transactionId}`,
         );
-        return;
-      }
 
-      this.logger.log(
-        `QuickMenu reward ok amount=${amount} recipient=${recipient.userId} tx=${result.transactionId}`,
-      );
-
-      const displayRecipient = recipientUsername || recipient.userId;
-      const content = `🎁 Reward thành công (Quick Menu)
+        const displayRecipient = recipientUsername || recipient.userId;
+        const content = `🎁 Reward thành công (Quick Menu)
 Người reward: ${grantor.username || grantor.userId}
 Người nhận: ${displayRecipient}
 Số điểm: ${amount.toLocaleString('vi-VN')} points
 Số dư mới: ${(result.newBalance ?? 0).toLocaleString('vi-VN')} points`;
 
-      await this.replyChannel(clanId, channelId, content);
+        await this.replyChannel(clanId, channelId, content);
+      } finally {
+        await this.redisCacheService.releaseLock(lockKey);
+      }
     } catch (error) {
       this.logger.error('Quick menu reward failed', error);
     }
@@ -227,10 +232,9 @@ Số dư mới: ${(result.newBalance ?? 0).toLocaleString('vi-VN')} points`;
   /** Recipient = target message author (client + sock message_sender_id). */
   private resolveRecipient(
     event: QuickMenuPayload,
-    grantorId: string,
   ): { userId?: string; username?: string } {
     const id = event.message_sender_id;
-    if (!id || String(id) === '0' || String(id) === grantorId) return {};
+    if (!id || String(id) === '0') return {};
     return { userId: String(id) };
   }
 

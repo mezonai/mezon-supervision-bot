@@ -24,7 +24,6 @@ export class InitialSchema1747622400000 implements MigrationInterface {
         "botPing" boolean NOT NULL DEFAULT false,
         "createdAt" numeric,
         "amount" numeric DEFAULT 0,
-        "rewardGrantors" jsonb DEFAULT '{}'::jsonb,
         "invitor" jsonb DEFAULT '{}'::jsonb,
         "ban" jsonb DEFAULT '[]'::jsonb,
         CONSTRAINT "PK_mebot_users" PRIMARY KEY ("user_id")
@@ -66,9 +65,37 @@ export class InitialSchema1747622400000 implements MigrationInterface {
       CREATE INDEX "IDX_mebot_welcomeMessage_botId"
       ON "mebot_welcomeMessage" ("botId")
     `);
+
+    await queryRunner.query(`
+      CREATE TABLE "mebot_reward_grantor" (
+        "id" SERIAL NOT NULL,
+        "rewarder_id" text NOT NULL,
+        "clan_id" text NOT NULL,
+        "granted_by" text,
+        "createdAt" bigint NOT NULL DEFAULT (extract(epoch from now()) * 1000),
+        CONSTRAINT "PK_mebot_reward_grantor" PRIMARY KEY ("id")
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX "IDX_mebot_reward_grantor_clan_id"
+      ON "mebot_reward_grantor" ("clan_id")
+    `);
+
+    await queryRunner.query(`
+      CREATE UNIQUE INDEX "IDX_mebot_reward_grantor_rewarder_clan"
+      ON "mebot_reward_grantor" ("rewarder_id", "clan_id")
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_mebot_reward_grantor_rewarder_clan"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_mebot_reward_grantor_clan_id"`,
+    );
+    await queryRunner.query(`DROP TABLE IF EXISTS "mebot_reward_grantor"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_mebot_welcomeMessage_botId"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "mebot_welcomeMessage"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_mebot_transaction_id_transactionId"`);

@@ -5,7 +5,6 @@ import { DataSource, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { EMarkdownType } from 'mezon-sdk';
 import { Transaction } from '../models/transaction.entity';
-import { User } from '../models/user.entity';
 import { UserCacheService } from '../services/user-cache.service';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 
@@ -47,8 +46,6 @@ export class RewardService {
   constructor(
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
     private userCacheService: UserCacheService,
     private dataSource: DataSource,
     private configService: ConfigService,
@@ -69,55 +66,26 @@ export class RewardService {
     return !isNaN(n) && n > 0 ? n : undefined;
   }
 
-  private getBotUserId(): string {
-    return process.env.SUPERVISION_BOT_ID || '';
-  }
-
-  private displayName(user: User): string {
-    return user.clan_nick || user.username || user.user_id;
-  }
-
-  private leaderboardBaseQuery() {
-    const botId = this.getBotUserId();
-    const qb = this.userRepository
-      .createQueryBuilder('u')
-      .where('(u.bot IS NULL OR u.bot = false)')
-      .andWhere('COALESCE(u.amount, 0) > 0');
-    if (botId) {
-      qb.andWhere('u.user_id != :botId', { botId });
-    }
-    return qb;
-  }
-
   async getPointsLeaderboard(limit: number): Promise<LeaderboardEntry[]> {
-    const rows = await this.leaderboardBaseQuery()
-      .orderBy('u.amount', 'DESC')
-      .addOrderBy('u.username', 'ASC')
-      .limit(limit)
-      .getMany();
+    const rows = await this.userCacheService.getPointsLeaderboardFromCache(limit);
 
     return rows.map((user, index) => ({
       rank: index + 1,
-      userId: user.user_id,
-      displayName: this.displayName(user),
-      amount: Number(user.amount) || 0,
+      userId: user.userId,
+      displayName: user.displayName,
+      amount: user.amount,
     }));
   }
 
   async getUserPointsRank(userId: string): Promise<UserPointsRank | null> {
-    const user = await this.userRepository.findOne({ where: { user_id: userId } });
-    if (!user) return null;
-
-    const amount = Number(user.amount) || 0;
-    const higherCount = await this.leaderboardBaseQuery()
-      .andWhere('u.amount > :amount', { amount })
-      .getCount();
+    const rank = await this.userCacheService.getUserPointsRankFromCache(userId);
+    if (!rank) return null;
 
     return {
-      rank: higherCount + 1,
-      userId: user.user_id,
-      displayName: this.displayName(user),
-      amount,
+      rank: rank.rank,
+      userId: rank.userId,
+      displayName: rank.displayName,
+      amount: rank.amount,
     };
   }
 

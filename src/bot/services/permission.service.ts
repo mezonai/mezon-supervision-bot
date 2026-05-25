@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { User } from '../models/user.entity';
+import { RewardGrantorService } from '../reward/reward-grantor.service';
 
 @Injectable()
 export class PermissionService {
@@ -8,7 +8,10 @@ export class PermissionService {
   private readonly adminIds: string[];
   private readonly adminIdSet: Set<string>;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private rewardGrantorService: RewardGrantorService,
+  ) {
     const envAdmins =
       this.configService.get<string>('BOT_ADMIN_IDS') ||
       process.env.BOT_ADMIN_IDS ||
@@ -37,22 +40,11 @@ export class PermissionService {
     return [...this.adminIds];
   }
 
-  canReward(identity: string | undefined, clanId: string, bot: User): boolean {
-    if (!identity || !clanId) return false;
-    const grantors = bot.rewardGrantors?.[clanId] || [];
-    return grantors.some(
-      (g) => g === identity || g.toLowerCase() === identity.toLowerCase(),
-    );
-  }
-
-  canRewardGrantor(
+  async canRewardGrantor(
     userId: string | undefined,
-    username: string | undefined,
     clanId: string,
-    bot: User,
-  ): boolean {
-    if (userId && this.canReward(userId, clanId, bot)) return true;
-    if (username && this.canReward(username, clanId, bot)) return true;
-    return false;
+  ): Promise<boolean> {
+    if (!userId || !clanId) return false;
+    return this.rewardGrantorService.isRewardGrantor(userId, clanId);
   }
 }

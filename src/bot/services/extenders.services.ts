@@ -82,7 +82,6 @@ export class ExtendersService {
       botPing: false,
       createdAt: Date.now(),
       amount: 0,
-      rewardGrantors: {},
       invitor: invitor && clan_id ? { [clan_id]: invitor } : {},
     });
 

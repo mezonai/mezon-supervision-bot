@@ -54,11 +54,6 @@ export class User {
   amount: number;
 
   @Column({ type: 'jsonb', nullable: true, default: {} })
-  rewardGrantors: {
-    [clanId: string]: string[];
-  };
-
-  @Column({ type: 'jsonb', nullable: true, default: {} })
   invitor: {
     [clanId: string]: string;
   };

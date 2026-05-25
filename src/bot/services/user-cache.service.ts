@@ -482,6 +482,94 @@ export class UserCacheService {
     }
   }
 
+  private async getMergedUserCaches(): Promise<Map<string, UserCache>> {
+    const merged = new Map<string, UserCache>();
+    const redisUsers = await this.redisCacheService.listAllUserCaches();
+    for (const [userId, cache] of redisUsers) {
+      merged.set(userId, cache);
+    }
+    for (const [userId, cache] of this.userCache) {
+      merged.set(userId, cache);
+    }
+    return merged;
+  }
+
+  private getBotUserId(): string {
+    return process.env.SUPERVISION_BOT_ID || '';
+  }
+
+  private cacheDisplayName(cache: UserCache, userId: string): string {
+    return cache.clan_nick || cache.username || userId;
+  }
+
+  async getPointsLeaderboardFromCache(limit: number): Promise<
+    Array<{
+      userId: string;
+      displayName: string;
+      amount: number;
+    }>
+  > {
+    const botId = this.getBotUserId();
+    const merged = await this.getMergedUserCaches();
+
+    return [...merged.entries()]
+      .filter(([userId, cache]) => userId !== botId && Number(cache.amount) > 0)
+      .map(([userId, cache]) => ({
+        userId,
+        displayName: this.cacheDisplayName(cache, userId),
+        amount: Number(cache.amount) || 0,
+      }))
+      .sort(
+        (a, b) =>
+          b.amount - a.amount ||
+          a.displayName.localeCompare(b.displayName, 'vi'),
+      )
+      .slice(0, limit);
+  }
+
+  async getUserPointsRankFromCache(userId: string): Promise<{
+    userId: string;
+    displayName: string;
+    amount: number;
+    rank: number;
+  } | null> {
+    const botId = this.getBotUserId();
+    let merged = await this.getMergedUserCaches();
+
+    if (!merged.has(userId)) {
+      const loaded = await this.getUserFromCache(userId);
+      if (!loaded) return null;
+      merged = await this.getMergedUserCaches();
+    }
+
+    const cache = merged.get(userId);
+    if (!cache) return null;
+
+    const amount = Number(cache.amount) || 0;
+    const ranked = [...merged.entries()]
+      .filter(([id]) => id !== botId)
+      .map(([id, entry]) => ({
+        userId: id,
+        displayName: this.cacheDisplayName(entry, id),
+        amount: Number(entry.amount) || 0,
+      }))
+      .sort(
+        (a, b) =>
+          b.amount - a.amount ||
+          a.displayName.localeCompare(b.displayName, 'vi'),
+      );
+
+    const rankIndex = ranked.findIndex((entry) => entry.userId === userId);
+    const rank = rankIndex >= 0 ? rankIndex + 1 : ranked.length + 1;
+
+    return {
+      userId,
+      displayName: this.cacheDisplayName(cache, userId),
+      amount,
+      rank,
+    };
+  }
+
   async getAllCachedUsers(limit: number = 50): Promise<{
     users: Array<{
       userId: string;

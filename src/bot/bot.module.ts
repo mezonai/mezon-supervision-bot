@@ -22,12 +22,14 @@ import { WelcomeMsgCommand } from './commands/welcomeMessages/welcomeMessages.co
 import { WelcomeMsgInfoCommand } from './commands/welcomeMessages/welcomeMessagesInfo.command';
 import { BanCommand } from './commands/ban/ban';
 import { UnbanCommand } from './commands/ban/unban';
-import { Transaction } from './models/transaction.entity';
+import { RewardGrantor } from './models/rewardGrantor.entity';
 import { UpdateCommand } from './commands/update/update.command';
 import { RedisCacheService } from './services/redis-cache.service';
 import { UserCacheService } from './services/user-cache.service';
 import { ReplyStatsService } from './services/reply-stats.service';
 import { PermissionService } from './services/permission.service';
+import { Transaction } from './models/transaction.entity';
+import { RewardGrantorService } from './reward/reward-grantor.service';
 import { RewardSetupCommand } from './reward/reward-setup.command';
 import { RewardLeaderboardCommand } from './reward/reward-leaderboard.command';
 import { RewardService } from './reward/reward.service';
@@ -39,7 +41,7 @@ import { ListenerQuickMenuReward } from './listeners/quickMenu.reward.listener';
       dest: './files',
     }),
     DiscoveryModule,
-    TypeOrmModule.forFeature([User, WelcomeMessage, Transaction]),
+    TypeOrmModule.forFeature([User, WelcomeMessage, Transaction, RewardGrantor]),
     HttpModule,
   ],
   providers: [
@@ -63,6 +65,7 @@ import { ListenerQuickMenuReward } from './listeners/quickMenu.reward.listener';
     UnbanCommand,
     UpdateCommand,
     PermissionService,
+    RewardGrantorService,
     RewardSetupCommand,
     RewardLeaderboardCommand,
     RewardService,

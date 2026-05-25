@@ -1,9 +1,12 @@
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { CommandMessage } from 'src/bot/base/command.abstract';
-import { ChannelMessage } from 'mezon-sdk';
+import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { UserCacheService } from 'src/bot/services/user-cache.service';
-import { PermissionService } from 'src/bot/services/permission.service';
+import {
+  PermissionService,
+  NO_ADMIN_PERMISSION_MESSAGE,
+} from 'src/bot/services/permission.service';
 
 @Command('update')
 export class UpdateCommand extends CommandMessage {
@@ -16,7 +19,18 @@ export class UpdateCommand extends CommandMessage {
   }
 
   async execute(args: string[], message: ChannelMessage) {
-    if (!this.permissionService.isAdmin(message.sender_id || '')) return;
+    if (!this.permissionService.isAdmin(message.sender_id || '')) {
+      return this.replyToMessage(message, {
+        t: NO_ADMIN_PERMISSION_MESSAGE,
+        mk: [
+          {
+            type: EMarkdownType.PRE,
+            s: 0,
+            e: NO_ADMIN_PERMISSION_MESSAGE.length,
+          },
+        ],
+      });
+    }
 
     const messageChannel = await this.getChannelMessage(message);
 

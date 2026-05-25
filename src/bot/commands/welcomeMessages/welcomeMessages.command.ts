@@ -3,6 +3,10 @@ import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
+import {
+  NO_ADMIN_PERMISSION_MESSAGE,
+  PermissionService,
+} from 'src/bot/services/permission.service';
 import { Repository } from 'typeorm';
 import { WelcomeMessage } from 'src/bot/models/welcomeMessage.entity';
 
@@ -12,12 +16,25 @@ export class WelcomeMsgCommand extends CommandMessage {
     clientService: MezonClientService,
     @InjectRepository(WelcomeMessage)
     private welcomeMessageRepository: Repository<WelcomeMessage>,
+    private permissionService: PermissionService,
   ) {
     super(clientService);
   }
 
   async execute(args: string[], message: ChannelMessage) {
-    if (message.sender_id !== '2016174228608389120') return;
+    if (!this.permissionService.isAdmin(message.sender_id || '')) {
+      return this.replyToMessage(message, {
+        t: NO_ADMIN_PERMISSION_MESSAGE,
+        mk: [
+          {
+            type: EMarkdownType.PRE,
+            s: 0,
+            e: NO_ADMIN_PERMISSION_MESSAGE.length,
+          },
+        ],
+      });
+    }
+
     const messageChannel = await this.getChannelMessage(message);
     let messageContent =
       'welcome message content is not given! \n Example: *welcomemsg welcome message content \n [username]: to get the user name \n [clanname]: to get clan name';

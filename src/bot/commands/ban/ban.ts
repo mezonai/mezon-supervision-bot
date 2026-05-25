@@ -7,7 +7,7 @@ import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { FuncType } from 'src/bot/constants/configs';
 import { UserCacheService } from 'src/bot/services/user-cache.service';
-import { PermissionService } from 'src/bot/services/permission.service';
+import { PermissionService, NO_ADMIN_PERMISSION_MESSAGE } from 'src/bot/services/permission.service';
 
 @Command('ban')
 export class BanCommand extends CommandMessage {
@@ -21,7 +21,19 @@ export class BanCommand extends CommandMessage {
   }
 
   async execute(args: string[], message: ChannelMessage) {
-    if (!this.permissionService.isAdmin(message.sender_id || '')) return;
+    if (!this.permissionService.isAdmin(message.sender_id || '')) {
+      return this.replyToMessage(message, {
+        t: NO_ADMIN_PERMISSION_MESSAGE,
+        mk: [
+          {
+            type: EMarkdownType.PRE,
+            s: 0,
+            e: NO_ADMIN_PERMISSION_MESSAGE.length,
+          },
+        ],
+      });
+    }
+
     const messageChannel = await this.getChannelMessage(message);
     const content = args.join(' ');
     const usernameMatch = content.match(/\[username\]:\s*([^\[\]]+)/);

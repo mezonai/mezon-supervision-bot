@@ -6,7 +6,7 @@ import { CommandMessage } from 'src/bot/base/command.abstract';
 import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { EUserError } from 'src/bot/constants/error';
-import { PermissionService } from 'src/bot/services/permission.service';
+import { PermissionService, NO_ADMIN_PERMISSION_MESSAGE } from 'src/bot/services/permission.service';
 import { RewardGrantorService } from './reward-grantor.service';
 
 @Command('rewardsetup')
@@ -31,8 +31,7 @@ export class RewardSetupCommand extends CommandMessage {
     const senderId = String(message.sender_id || '');
 
     if (!this.permissionService.isAdmin(senderId)) {
-      const content = '[RewardSetup] - You have no permission!';
-      return reply(content);
+      return reply(NO_ADMIN_PERMISSION_MESSAGE);
     }
 
     const bot = await this.userRepository.findOne({

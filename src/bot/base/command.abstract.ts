@@ -24,7 +24,6 @@ export abstract class CommandMessage {
     try {
       return await channel.messages.fetch(messageId);
     } catch {
-      // Race: command handler may run before _initChannelMessageCache persists the message.
       return undefined;
     }
   }
@@ -38,7 +37,6 @@ export abstract class CommandMessage {
     return this.client.channels.fetch(channelId).catch(() => null);
   }
 
-  /** Reply in-thread when possible; otherwise send a new channel message. */
   protected async replyToMessage(
     message: ChannelMessage,
     payload: ChannelMessageContent,

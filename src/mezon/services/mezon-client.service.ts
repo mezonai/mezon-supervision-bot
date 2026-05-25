@@ -34,7 +34,6 @@ export class MezonClientService {
     return this.client;
   }
 
-  /** SDK AddClanUser caches User without dmChannelId; delete cache then fetch creates DM. */
   fetchUserForDm(userId: string) {
     return fetchUserForDm(this.client, userId);
   }

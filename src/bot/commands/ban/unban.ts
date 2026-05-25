@@ -7,6 +7,7 @@ import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { FuncType } from 'src/bot/constants/configs';
 import { UserCacheService } from 'src/bot/services/user-cache.service';
+import { PermissionService, NO_ADMIN_PERMISSION_MESSAGE } from 'src/bot/services/permission.service';
 
 @Command('unban')
 export class UnbanCommand extends CommandMessage {
@@ -14,12 +15,25 @@ export class UnbanCommand extends CommandMessage {
     clientService: MezonClientService,
     @InjectRepository(User) private userRepository: Repository<User>,
     private userCacheService: UserCacheService,
+    private permissionService: PermissionService,
   ) {
     super(clientService);
   }
 
   async execute(args: string[], message: ChannelMessage) {
-    if (message.sender_id !== '1827994776956309504') return;
+    if (!this.permissionService.isAdmin(message.sender_id || '')) {
+      return this.replyToMessage(message, {
+        t: NO_ADMIN_PERMISSION_MESSAGE,
+        mk: [
+          {
+            type: EMarkdownType.PRE,
+            s: 0,
+            e: NO_ADMIN_PERMISSION_MESSAGE.length,
+          },
+        ],
+      });
+    }
+
     const messageChannel = await this.getChannelMessage(message);
     const content = args.join(' ');
     const usernameMatch = content.match(/\[username\]:\s*([^\[\]]+)/);
@@ -28,8 +42,8 @@ export class UnbanCommand extends CommandMessage {
     if (!typeMatch || !usernameMatch) {
       const content = `[Unban]
         - [username]: tên người bị ban
-        - [type]: ban chức năng (lixi, all)
-        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: lixi`;
+        - [type]: ban chức năng (reward, all)
+        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: reward`;
 
       return await messageChannel?.reply({
         t: content,
@@ -50,8 +64,8 @@ export class UnbanCommand extends CommandMessage {
 
     let funcType = '';
     switch (type) {
-      case FuncType.LIXI:
-        funcType = FuncType.LIXI;
+      case FuncType.REWARD:
+        funcType = FuncType.REWARD;
         break;
       case FuncType.ALL:
         funcType = FuncType.ALL;
@@ -59,8 +73,8 @@ export class UnbanCommand extends CommandMessage {
       default:
         const content = `[unban]
         - [username]: tên người bị ban
-        - [type]: ban chức năng (lixi, all)
-        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: lixi`;
+        - [type]: ban chức năng (reward, all)
+        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: reward`;
 
         return await messageChannel?.reply({
           t: content,

@@ -14,26 +14,26 @@ import { BotGateway } from './events/bot.gateways';
 import { ListenerChannelMessage } from './listeners/onChannelMessage.listener';
 import { CommandBase } from './base/command.handle';
 import { AvatarCommand } from './commands/avatar/avatar.command';
-import { MezonBotMessage } from './models/mezonBotMessage.entity';
-import { ListenerMessageButtonClicked } from './listeners/onMessageButtonClicked.listener';
 import { QRCodeCommand } from './commands/qrcode/qrcode.command';
 import { ListenerTokenSend } from './listeners/tokensend.handle';
 import { WelcomeMessageHandler } from './listeners/welcomeMessages';
 import { WelcomeMessage } from './models/welcomeMessage.entity';
 import { WelcomeMsgCommand } from './commands/welcomeMessages/welcomeMessages.command';
 import { WelcomeMsgInfoCommand } from './commands/welcomeMessages/welcomeMessagesInfo.command';
-import { RoleCommand } from './commands/selfAssignableRoles/role.command';
-import { RoleService } from './commands/selfAssignableRoles/role.service';
-import { WhiteListAddCommand } from './commands/selfAssignableRoles/whiteList';
-import { LixiCommand } from './lixi/lixi.command';
-import { LixiService } from './lixi/lixi.service';
 import { BanCommand } from './commands/ban/ban';
 import { UnbanCommand } from './commands/ban/unban';
-import { Transaction } from './models/transaction.entity';
+import { RewardGrantor } from './models/rewardGrantor.entity';
 import { UpdateCommand } from './commands/update/update.command';
 import { RedisCacheService } from './services/redis-cache.service';
 import { UserCacheService } from './services/user-cache.service';
 import { ReplyStatsService } from './services/reply-stats.service';
+import { PermissionService } from './services/permission.service';
+import { Transaction } from './models/transaction.entity';
+import { RewardGrantorService } from './reward/reward-grantor.service';
+import { RewardSetupCommand } from './reward/reward-setup.command';
+import { RewardLeaderboardCommand } from './reward/reward-leaderboard.command';
+import { RewardService } from './reward/reward.service';
+import { ListenerQuickMenuReward } from './listeners/quickMenu.reward.listener';
 
 @Module({
   imports: [
@@ -41,19 +41,13 @@ import { ReplyStatsService } from './services/reply-stats.service';
       dest: './files',
     }),
     DiscoveryModule,
-    TypeOrmModule.forFeature([
-      User,
-      MezonBotMessage,
-      WelcomeMessage,
-      Transaction,
-    ]),
+    TypeOrmModule.forFeature([User, WelcomeMessage, Transaction, RewardGrantor]),
     HttpModule,
   ],
   providers: [
     CommandBase,
     BotGateway,
     ListenerChannelMessage,
-    ListenerMessageButtonClicked,
     HelpCommand,
     AvatarCommand,
     QRCodeCommand,
@@ -67,14 +61,15 @@ import { ReplyStatsService } from './services/reply-stats.service';
     WelcomeMessageHandler,
     WelcomeMsgCommand,
     WelcomeMsgInfoCommand,
-    RoleCommand,
-    RoleService,
-    WhiteListAddCommand,
-    LixiCommand,
-    LixiService,
     BanCommand,
     UnbanCommand,
     UpdateCommand,
+    PermissionService,
+    RewardGrantorService,
+    RewardSetupCommand,
+    RewardLeaderboardCommand,
+    RewardService,
+    ListenerQuickMenuReward,
   ],
   controllers: [],
 })

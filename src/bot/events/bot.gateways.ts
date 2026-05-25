@@ -9,6 +9,7 @@ import {
   UserChannelRemoved,
   GiveCoffeeEvent,
   AddClanUserEvent,
+  QuickMenuEvent,
 } from 'mezon-sdk';
 
 import {
@@ -21,10 +22,6 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { ExtendersService } from '../services/extenders.services';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../models/user.entity';
-import { MessageButtonClicked } from 'mezon-sdk/dist/cjs/rtapi/realtime';
 
 @Injectable()
 export class BotGateway {
@@ -32,22 +29,16 @@ export class BotGateway {
   private client: MezonClient;
 
   constructor(
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
-    private clientService: MezonClientService,
+    clientService: MezonClientService,
     private extendersService: ExtendersService,
     private eventEmitter: EventEmitter2,
   ) {
-    this.client = this.clientService.getClient();
+    this.client = clientService.getClient();
   }
 
   initEvent() {
     this.client.onTokenSend((data: TokenSentEvent) => {
       this.eventEmitter.emit(Events.TokenSend, data);
-    });
-
-    this.client.onMessageButtonClicked((data: MessageButtonClicked) => {
-      this.eventEmitter.emit(Events.MessageButtonClicked, data);
     });
 
     this.client.onStreamingJoinedEvent((data: StreamingJoinedEvent) => {
@@ -74,82 +65,8 @@ export class BotGateway {
       this.eventEmitter.emit(Events.UserClanRemoved, user);
     });
 
-    this.client.onRoleEvent(async (data) => {
-      this.eventEmitter.emit(Events.RoleEvent, data);
-
-      const botId = process.env.UTILITY_BOT_ID || '';
-      const clanId = data.role?.clan_id;
-      const roleId = data.role?.id;
-      const maxLevelPermission = data.role?.max_level_permission || 0;
-
-      const findHighestRole = (
-        roles: { roleId: string; maxLevelPermission: number }[],
-      ) => {
-        if (!roles.length) return undefined;
-        return roles.reduce((max, r) =>
-          r.maxLevelPermission > max.maxLevelPermission ? r : max,
-        ).roleId;
-      };
-
-      const bot = await this.userRepository.findOne({
-        where: {
-          user_id: botId,
-        },
-      });
-      if (!bot || !clanId || !roleId) return;
-
-      const currentRoleClan = bot.roleClan || {};
-      const clanData = currentRoleClan[clanId] || {
-        roles: [],
-        highest: undefined,
-      };
-
-      if (data.user_add_ids.includes(botId)) {
-        const exists = clanData.roles.some((r) => r.roleId === roleId);
-        if (!exists) {
-          clanData.roles.push({ roleId, maxLevelPermission });
-
-          const currentHighest = clanData.roles.find(
-            (r) => r.roleId === clanData.roleMax,
-          );
-          if (
-            !currentHighest ||
-            maxLevelPermission > currentHighest.maxLevelPermission
-          ) {
-            clanData.roleMax = roleId;
-          }
-        }
-
-        currentRoleClan[clanId] = clanData;
-
-        await this.userRepository.update(
-          { user_id: botId },
-          { roleClan: currentRoleClan },
-        );
-      }
-
-      if (data.user_remove_ids.includes(botId)) {
-        clanData.roles = clanData.roles.filter((r) => r.roleId !== roleId);
-
-        if (clanData.roleMax === roleId) {
-          clanData.roleMax = findHighestRole(clanData.roles);
-        }
-
-        currentRoleClan[clanId] = clanData;
-
-        await this.userRepository.update(
-          { user_id: botId },
-          { roleClan: currentRoleClan },
-        );
-      }
-    });
-
-    this.client.onRoleAssign((data) => {
-      this.eventEmitter.emit(Events.RoleAssign, data);
-    });
-
-    this.client.onUserChannelAdded((user: UserChannelAddedEvent) => {
-      this.eventEmitter.emit(Events.UserChannelAdded, user);
+    this.client.onUserChannelAdded((event: UserChannelAddedEvent) => {
+      this.eventEmitter.emit(Events.UserChannelAdded, event);
     });
 
     this.client.onChannelDeleted((channel: ChannelDeletedEvent) => {
@@ -168,15 +85,33 @@ export class BotGateway {
       this.eventEmitter.emit(Events.GiveCoffee, data);
     });
 
+    this.client.onQuickMenuEvent((data) => {
+      const payload = (data as QuickMenuEvent).quick_menu_event ?? data;
+      this.eventEmitter.emit(Events.QuickMenu, {
+        quick_menu_event: payload,
+      } as QuickMenuEvent);
+    });
+
     this.client.onAddClanUser(async (data: AddClanUserEvent) => {
       this.eventEmitter.emit(Events.AddClanUser, data);
-      const user: any = {
-        user_id: data.user.user_id,
-        username: data.user.username,
-        avatar: data.user.avatar,
-        display_name: data.user.display_name,
-      };
-      await this.extendersService.addDBUser(user, data.invitor, data.clan_id);
+      if (!data?.user?.user_id) return;
+      try {
+        await this.extendersService.addDBUser(
+          {
+            user_id: data.user.user_id,
+            username: data.user.username || '',
+            avatar: data.user.avatar || '',
+            display_name: data.user.display_name,
+          },
+          data.invitor || '',
+          data.clan_id || '',
+        );
+      } catch (err) {
+        this.logger.warn(
+          `addDBUser on AddClanUser failed user_id=${data.user.user_id}`,
+          err,
+        );
+      }
     });
 
     this.client.onChannelMessage(async (message) => {

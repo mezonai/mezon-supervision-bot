@@ -19,7 +19,7 @@ export class WelcomeMsgInfoCommand extends CommandMessage {
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     const welcomeMessage = await this.welcomeMessageRepository.findOne({
-      where: { botId: process.env.UTILITY_BOT_ID },
+      where: { botId: process.env.SUPERVISION_BOT_ID },
     });
     if (!welcomeMessage) {
       return await messageChannel?.reply({

@@ -47,6 +47,7 @@ export class ListenerQuickMenuReward {
       const msg = event.message;
       const clanId = String(msg.clan_id || '');
       const channelId = String(msg.channel_id || '');
+      const messageId = (msg.id && msg.id !== '0') ? String(msg.id) : '';
       if (!clanId || !channelId) return;
 
       const bot = await this.userRepository.findOne({
@@ -59,7 +60,11 @@ export class ListenerQuickMenuReward {
         await this.replyChannel(
           clanId,
           channelId,
+          messageId,
           'Bot chưa được khởi tạo trong DB. Liên hệ admin.',
+          String(event.message_sender_id || ''),
+          msg.content,
+          msg.mode ?? 2,
         );
         return;
       }
@@ -72,7 +77,11 @@ export class ListenerQuickMenuReward {
         await this.replyChannel(
           clanId,
           channelId,
+          messageId,
           'Không xác định được người thực hiện reward.',
+          String(event.message_sender_id || ''),
+          msg.content,
+          msg.mode ?? 2,
         );
         return;
       }
@@ -87,10 +96,12 @@ export class ListenerQuickMenuReward {
         this.logger.warn(
           `QuickMenu denied grantor=${grantor.userId} clan=${clanId}`,
         );
-        await this.replyChannel(
+        await this.sendEphemeralToGrantor(
           clanId,
           channelId,
-          'Bạn chưa được cấp quyền reward. Liên hệ admin (*rewardsetup).',
+          messageId,
+          'Bạn chưa được cấp quyền reward. Liên hệ admin.',
+          grantor.userId,
         );
         return;
       }
@@ -103,7 +114,11 @@ export class ListenerQuickMenuReward {
         await this.replyChannel(
           clanId,
           channelId,
+          messageId,
           'Bạn đang bị ban chức năng reward.',
+          String(event.message_sender_id || ''),
+          msg.content,
+          msg.mode ?? 2,
         );
         return;
       }
@@ -116,7 +131,11 @@ export class ListenerQuickMenuReward {
         await this.replyChannel(
           clanId,
           channelId,
+          messageId,
           'Không thể reward chính mình.',
+          String(event.message_sender_id || ''),
+          msg.content,
+          msg.mode ?? 2,
         );
         return;
       }
@@ -125,7 +144,11 @@ export class ListenerQuickMenuReward {
         await this.replyChannel(
           clanId,
           channelId,
+          messageId,
           'Không xác định được người nhận. Chuột phải vào tin nhắn của họ rồi chọn Quick Menu reward.',
+          String(event.message_sender_id || ''),
+          msg.content,
+          msg.mode ?? 2,
         );
         return;
       }
@@ -151,7 +174,7 @@ export class ListenerQuickMenuReward {
                 .users.fetch(recipient.userId);
               recipientUsername = fetched?.username;
             } catch {
-              // optional
+              // ignore
             }
           }
         }
@@ -171,7 +194,11 @@ export class ListenerQuickMenuReward {
           await this.replyChannel(
             clanId,
             channelId,
+            messageId,
             result.error || 'Reward thất bại.',
+            String(event.message_sender_id || ''),
+            msg.content,
+            msg.mode ?? 2,
           );
           return;
         }
@@ -181,13 +208,11 @@ export class ListenerQuickMenuReward {
         );
 
         const displayRecipient = recipientUsername || recipient.userId;
-        const content = `🎁 Reward thành công (Quick Menu)
-Người reward: ${grantor.username || grantor.userId}
-Người nhận: ${displayRecipient}
-Số điểm: ${amount.toLocaleString('vi-VN')} points
-Số dư mới: ${(result.newBalance ?? 0).toLocaleString('vi-VN')} points`;
+        const content = `🎁 Reward thành công ${amount.toLocaleString('vi-VN')} points!
+Người reward: ${grantor.username || grantor.userId}.
+Người nhận: ${displayRecipient}.`;
 
-        await this.replyChannel(clanId, channelId, content);
+        await this.replyChannel(clanId, channelId, messageId, content, String(event.message_sender_id || ''), msg.content, msg.mode ?? 2);
       } finally {
         await this.redisCacheService.releaseLock(lockKey);
       }
@@ -275,20 +300,82 @@ Số dư mới: ${(result.newBalance ?? 0).toLocaleString('vi-VN')} points`;
     return undefined;
   }
 
-  private async replyChannel(
+  private async sendEphemeralToGrantor(
     clanId: string,
     channelId: string,
+    messageId: string,
     text: string,
+    grantorId: string,
   ): Promise<void> {
     try {
       const client = this.clientService.getClient();
       const clan = client.clans.get(clanId);
       const channel = await clan?.channels.fetch(channelId);
       if (!channel) return;
-      await channel.send({
+ 
+      const payload = {
         t: text,
         mk: [{ type: EMarkdownType.PRE, s: 0, e: text.length }],
-      });
+      };
+ 
+      await channel.sendEphemeral(grantorId, payload, messageId || undefined);
+    } catch (error) {
+      this.logger.warn('Failed to send ephemeral reward message', error);
+    }
+  }
+
+  private async replyChannel(
+    clanId: string,
+    channelId: string,
+    messageId: string,
+    text: string,
+    msgSenderId?: string,
+    msgContent?: any,
+    mode: number = 2,
+  ): Promise<void> {
+    try {
+      const client = this.clientService.getClient();
+      const clan = client.clans.get(clanId);
+      const channel = await clan?.channels.fetch(channelId);
+      if (!channel) return;
+
+      const payload = {
+        t: text,
+        mk: [{ type: EMarkdownType.PRE, s: 0, e: text.length }],
+      };
+
+      if (messageId) {
+        let senderUsername = '';
+        if (msgSenderId) {
+          try {
+            const user = await client.users.fetch(msgSenderId);
+            senderUsername = user?.clan_nick || user?.display_name || user?.username || '';
+          } catch {
+          }
+        }
+
+        const socketManager = (channel as any).socketManager;
+        const channelAny = channel as any;
+        await socketManager.writeChatMessage({
+          clan_id: clanId,
+          channel_id: channelId,
+          mode,
+          is_public: !channelAny.is_private,
+          content: payload,
+          references: [
+            {
+              message_ref_id: messageId,
+              message_sender_id: msgSenderId || '',
+              message_sender_username: senderUsername,
+              message_sender_avatar: '',
+              content: typeof msgContent === 'string' ? msgContent : JSON.stringify(msgContent ?? {}),
+            },
+          ],
+        });
+        return;
+      }
+
+      await channel.send(payload);
     } catch (error) {
       this.logger.warn('Failed to reply quick menu reward', error);
     }

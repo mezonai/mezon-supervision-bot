@@ -123,8 +123,12 @@ export class RewardGrantorService {
   }
 
   private async resolveIdentity(identity: string): Promise<string | null> {
-    const trimmed = identity.trim();
+    const trimmed = identity.trim().replace(/,+$/, '');
     if (!trimmed) return null;
+
+    if (/^\d+$/.test(trimmed)) {
+      return trimmed;
+    }
 
     const byId = await this.userRepository.findOne({
       where: { user_id: trimmed },

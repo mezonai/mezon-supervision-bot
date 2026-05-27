@@ -36,14 +36,14 @@ export class UnbanCommand extends CommandMessage {
 
     const messageChannel = await this.getChannelMessage(message);
     const content = args.join(' ');
-    const usernameMatch = content.match(/\[username\]:\s*([^\[\]]+)/);
-    const typeMatch = content.match(/\[type\]:\s*(\w+)/);
+    const usernameMatch = content.match(/username:\s*(.+?)(?=\s+type:|$)/);
+    const typeMatch = content.match(/type:\s*(\w+)/);
 
     if (!typeMatch || !usernameMatch) {
-      const content = `[Unban]
-        - [username]: tên người bị ban
-        - [type]: ban chức năng (reward, all)
-        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: reward`;
+      const content = `Unban
+        - username: tên người bị ban
+        - type: ban chức năng (reward, all)
+        Ex: *unban username: a.nguyenvan, b.phamquoc type: reward`;
 
       return await messageChannel?.reply({
         t: content,
@@ -71,10 +71,10 @@ export class UnbanCommand extends CommandMessage {
         funcType = FuncType.ALL;
         break;
       default:
-        const content = `[unban]
-        - [username]: tên người bị ban
-        - [type]: ban chức năng (reward, all)
-        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: reward`;
+        const content = `Unban
+        - username: tên người bị ban
+        - type: ban chức năng (reward, all)
+        Ex: *unban username: a.nguyenvan, b.phamquoc type: reward`;
 
         return await messageChannel?.reply({
           t: content,

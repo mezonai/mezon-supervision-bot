@@ -36,18 +36,18 @@ export class BanCommand extends CommandMessage {
 
     const messageChannel = await this.getChannelMessage(message);
     const content = args.join(' ');
-    const usernameMatch = content.match(/\[username\]:\s*([^\[\]]+)/);
-    const typeMatch = content.match(/\[type\]:\s*(\w+)/);
-    const timeMatch = content.match(/\[time\]:\s*(\d+)([smhd])/);
-    const noteMatch = content.match(/\[note\]:\s*(.+)/);
+    const usernameMatch = content.match(/username:\s*(.+?)(?=\s+type:)/);
+    const typeMatch = content.match(/type:\s*(\w+)/);
+    const timeMatch = content.match(/time:\s*(\d+)([smhd])/);
+    const noteMatch = content.match(/note:\s*(.+)/);
 
     if (!typeMatch || !timeMatch || !usernameMatch) {
-      const content = `[Ban]
-        - [username]: tên người bị ban
-        - [type]: ban chức năng (reward, all)
-        - [time]: thời gian ban (đơn vị: s, m, h, d)
-        - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: reward [time]: 5m [note]: phá hoại`;
+      const content = `Ban
+        - username: tên người bị ban
+        - type: ban chức năng (reward, all)
+        - time: thời gian ban (đơn vị: s, m, h, d)
+        - note: lý do ban
+        Ex: *ban username: a.nguyenvan, b.phamquoc type: reward time: 5m note: phá hoại`;
 
       return await messageChannel?.reply({
         t: content,
@@ -84,12 +84,12 @@ export class BanCommand extends CommandMessage {
         duration = timeValue * 86400;
         break;
       default:
-        const contentInvalidUnit = `[Ban]
-        - [username]: tên người bị ban
-        - [type]: ban chức năng (reward, all)
-        - [time]: thời gian ban (đơn vị: s, m, h, d)
-        - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: reward [time]: 5m [note]: phá hoại`;
+        const contentInvalidUnit = `Ban
+        - username: tên người bị ban
+        - type: ban chức năng (reward, all)
+        - time: thời gian ban (đơn vị: s, m, h, d)
+        - note: lý do ban
+        Ex: *ban username: a.nguyenvan, b.phamquoc type: reward time: 5m note: phá hoại`;
 
         return await messageChannel?.reply({
           t: contentInvalidUnit,
@@ -111,12 +111,12 @@ export class BanCommand extends CommandMessage {
         funcType = FuncType.ALL;
         break;
       default:
-        const content = `[Ban]
-        - [username]: tên người bị ban
-        - [type]: ban chức năng (reward, all)
-        - [time]: thời gian ban (đơn vị: s, m, h, d)
-        - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: reward [time]: 5m [note]: phá hoại`;
+        const content = `Ban
+        - username: tên người bị ban
+        - type: ban chức năng (reward, all)
+        - time: thời gian ban (đơn vị: s, m, h, d)
+        - note: lý do ban
+        Ex: *ban username: a.nguyenvan, b.phamquoc type: reward time: 5m note: phá hoại`;
 
         return await messageChannel?.reply({
           t: content,

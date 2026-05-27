@@ -42,22 +42,7 @@ export class RewardSetupCommand extends CommandMessage {
     }
 
     const clanId = message.clan_id || '';
-    const [actionRaw, ...usersRaw] = args
-      .join(' ')
-      .split('+')
-      .map((s) => s.trim());
-    const actionMatch = actionRaw.match(/^\[(.+?)\]\s*(.+)?$/);
-
-    let action = '';
-    let usernames: string[] = [];
-
-    if (actionMatch) {
-      action = actionMatch[1].toLowerCase();
-      const firstUser = actionMatch[2];
-      usernames = [firstUser, ...usersRaw].filter(Boolean);
-    } else if (actionRaw.toLowerCase() === 'list') {
-      action = 'list';
-    }
+    const { action, identities: usernames } = this.parseActionAndIdentities(args);
 
     if (action === 'list') {
       const grantors = await this.rewardGrantorService.listByClan(clanId);
@@ -78,12 +63,12 @@ export class RewardSetupCommand extends CommandMessage {
       !action ||
       (action !== 'add' && action !== 'remove')
     ) {
-      const content = `[RewardSetup]
-- [add] u1 + u2 : cấp quyền reward cho user (username hoặc userId Mezon)
-- [remove] u1 + u2 : gỡ quyền
-- [list] : xem danh sách grantor trong clan
+      const content = `RewardSetup
+- add u1, u2 hoặc u1 + u2 : cấp quyền reward (username hoặc userId Mezon)
+- remove u1, u2 hoặc u1 + u2 : gỡ quyền
+- list : xem danh sách grantor trong clan
 
-Ví dụ: *rewardsetup [add] mod.alice + mod.bob
+Ví dụ: *rewardsetup add mod.alice + mod.bob
 
 Sau khi setup, grantor reward bằng cách: chuột phải tin nhắn của người nhận → chọn Quick Menu reward_<amount>.`;
       return reply(content);
@@ -128,5 +113,32 @@ Sau khi setup, grantor reward bằng cách: chuột phải tin nhắn của ngư
 
       return reply(lines.join('\n'));
     }
+  }
+
+  private parseActionAndIdentities(args: string[]): {
+    action: string;
+    identities: string[];
+  } {
+    if (args.length === 0) {
+      return { action: '', identities: [] };
+    }
+
+    const actionCandidate = args[0].toLowerCase();
+    if (actionCandidate === 'list') {
+      return { action: 'list', identities: [] };
+    }
+
+    if (actionCandidate !== 'add' && actionCandidate !== 'remove') {
+      return { action: '', identities: [] };
+    }
+
+    const identities = args
+      .slice(1)
+      .join(' ')
+      .split(/[+,]/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    return { action: actionCandidate, identities };
   }
 }

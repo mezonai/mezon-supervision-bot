@@ -53,6 +53,26 @@ export abstract class CommandMessage {
     await channel?.send(payload);
   }
 
+  protected async replyEphemeralToSender(
+    message: ChannelMessage,
+    payload: ChannelMessageContent,
+  ): Promise<void> {
+    const senderId = String(message.sender_id || '').trim();
+    if (!senderId || senderId === '0') return;
+
+    const channel = await this.resolveTextChannel(
+      message.clan_id!,
+      message.channel_id,
+    );
+    if (!channel) return;
+
+    const refId = String(message.message_id || message.id || '').trim();
+    const referenceMessageId =
+      refId && refId !== '0' ? refId : undefined;
+
+    await channel.sendEphemeral(senderId, payload, referenceMessageId);
+  }
+
   abstract execute(
     args: string[],
     message: ChannelMessage,

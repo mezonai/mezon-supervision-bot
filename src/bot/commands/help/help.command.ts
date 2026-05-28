@@ -22,7 +22,7 @@ export class HelpCommand extends CommandMessage {
 
     if (args[0] === 'user') {
       if (!isAdmin) {
-        return this.replyToMessage(message, {
+        return this.replyEphemeralToSender(message, {
           t: NO_ADMIN_PERMISSION_MESSAGE,
           mk: [
             {
@@ -40,7 +40,7 @@ export class HelpCommand extends CommandMessage {
         if (!user) {
           messageContent = 'Not found user';
         }
-        return this.replyToMessage(message, {
+        return this.replyEphemeralToSender(message, {
           t: messageContent,
           mk: [{ type: EMarkdownType.PRE, s: 0, e: messageContent.length }],
         });
@@ -48,13 +48,13 @@ export class HelpCommand extends CommandMessage {
 
       const users = Array.from(this.client.users.values());
       const countDMChannel = users.filter((u) => !!u.dmChannelId).length;
-      return this.replyToMessage(message, {
+      return this.replyEphemeralToSender(message, {
         t: `Count init: ${countDMChannel}`,
       });
     }
 
     const messageContent = this.permissionService.formatHelpMessage(isAdmin);
-    return this.replyToMessage(message, {
+    return this.replyEphemeralToSender(message, {
       t: messageContent,
       mk: [{ type: EMarkdownType.PRE, s: 0, e: messageContent.length }],
     });

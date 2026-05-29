@@ -29,6 +29,13 @@ export const MEZON_EMBED_FOOTER = {
   icon_url: MEZON_IMAGE_URL,
 };
 
+export const MEZON_EMBED_AUTHOR = {
+  name: 'Mezon Supervision',
+  icon_url:
+    'https://profile.mezon.ai/1783755414765047808/2057712270560989184.png',
+  url: 'https://profile.mezon.ai/1783755414765047808/2057712270560989184.png',
+};
+
 export enum FuncType {
   REWARD = 'reward',
   ALL = 'all',

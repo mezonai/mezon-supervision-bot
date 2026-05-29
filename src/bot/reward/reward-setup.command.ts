@@ -6,8 +6,10 @@ import { CommandMessage } from 'src/bot/base/command.abstract';
 import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { EUserError } from 'src/bot/constants/error';
-import { PermissionService, NO_ADMIN_PERMISSION_MESSAGE } from 'src/bot/services/permission.service';
+import { PermissionService } from 'src/bot/services/permission.service';
 import { RewardGrantorService } from './reward-grantor.service';
+import { MEZON_EMBED_AUTHOR, MEZON_EMBED_FOOTER } from '../constants/configs';
+import { getRandomColor } from '../utils/helps';
 
 @Command('rewardsetup')
 export class RewardSetupCommand extends CommandMessage {
@@ -31,31 +33,69 @@ export class RewardSetupCommand extends CommandMessage {
     const senderId = String(message.sender_id || '');
 
     if (!this.permissionService.isAdmin(senderId)) {
-      return reply(NO_ADMIN_PERMISSION_MESSAGE);
+      return this.replyToMessage(message, {
+        embed: [
+          {
+            color: '#ED4245',
+            title: 'Reward Setup Command',
+            description: 'You do not have permission to use this command.',
+            fields: [
+              {
+                name: 'Permission Denied',
+                value: '',
+              },
+            ],
+            author: MEZON_EMBED_AUTHOR,
+            timestamp: new Date().toISOString(),
+            footer: MEZON_EMBED_FOOTER,
+          },
+        ],
+      });
     }
 
     const bot = await this.userRepository.findOne({
       where: { user_id: process.env.SUPERVISION_BOT_ID || '' },
     });
     if (!bot) {
-      return reply(EUserError.INVALID_USER);
+      return this.replyToMessage(message, {
+        embed: [
+          {
+            color: '#ED4245',
+            title: 'Reward Setup Command',
+            description: EUserError.INVALID_USER,
+            author: MEZON_EMBED_AUTHOR,
+            timestamp: new Date().toISOString(),
+            footer: MEZON_EMBED_FOOTER,
+          },
+        ],
+      });
     }
 
     const clanId = message.clan_id || '';
-    const { action, identities: usernames } = this.parseActionAndIdentities(args);
+    const { action, identities: usernames } =
+      this.parseActionAndIdentities(args);
 
     if (action === 'list') {
       const grantors = await this.rewardGrantorService.listByClan(clanId);
       const content =
         grantors.length > 0
-          ? `Danh sách được reward (clan ${clanId}):\n${grantors
-              .map(
-                (entry) =>
-                  `- ${entry.displayName} (${entry.rewarderId})`,
-              )
+          ? `Danh sách người dùng được cấp quyền reward (clan ${clanId}):\n${grantors
+              .map((entry) => `- ${entry.displayName} (${entry.rewarderId})`)
               .join('\n')}`
           : 'Chưa có ai được cấp quyền reward trong clan này.';
-      return reply(content);
+
+      return this.replyToMessage(message, {
+        embed: [
+          {
+            color: getRandomColor(),
+            title: 'Reward Setup Command',
+            description: content,
+            author: MEZON_EMBED_AUTHOR,
+            timestamp: new Date().toISOString(),
+            footer: MEZON_EMBED_FOOTER,
+          },
+        ],
+      });
     }
 
     if (
@@ -63,15 +103,33 @@ export class RewardSetupCommand extends CommandMessage {
       !action ||
       (action !== 'add' && action !== 'remove')
     ) {
-      const content = `RewardSetup
-- add u1, u2 hoặc u1 + u2 : cấp quyền reward (username hoặc userId Mezon)
-- remove u1, u2 hoặc u1 + u2 : gỡ quyền
-- list : xem danh sách grantor trong clan
-
-Ví dụ: *rewardsetup add mod.alice + mod.bob
-
-Sau khi setup, grantor reward bằng cách: chuột phải tin nhắn của người nhận → chọn Quick Menu reward_<amount>.`;
-      return reply(content);
+      return this.replyToMessage(message, {
+        embed: [
+          {
+            color: getRandomColor(),
+            title: 'Reward Setup Command',
+            fields: [
+              {
+                name: 'add <user1 hoặc user1 + user2>',
+                value:
+                  'Cấp quyền reward cho người dùng (theo username hoặc userId).',
+              },
+              {
+                name: 'remove <user1 hoặc user1 + user2>',
+                value:
+                  'Gỡ quyền reward của người dùng (theo username hoặc userId).',
+              },
+              {
+                name: 'list',
+                value: 'Xem danh sách grantor trong clan.',
+              },
+            ],
+            author: MEZON_EMBED_AUTHOR,
+            timestamp: new Date().toISOString(),
+            footer: MEZON_EMBED_FOOTER,
+          },
+        ],
+      });
     }
 
     if (action === 'add') {
@@ -81,8 +139,9 @@ Sau khi setup, grantor reward bằng cách: chuột phải tin nhắn của ngư
         senderId,
       );
 
-      const lines = ['✅ Đã thêm vào danh sách được reward:'];
+      const lines: string[] = [];
       if (result.added.length > 0) {
+        lines.push('Cấp quyền reward thành công:');
         lines.push(result.added.join(', '));
       }
       if (result.skipped.length > 0) {
@@ -94,7 +153,18 @@ Sau khi setup, grantor reward bằng cách: chuột phải tin nhắn của ngư
         );
       }
 
-      return reply(lines.join('\n'));
+      return this.replyToMessage(message, {
+        embed: [
+          {
+            color: '#57F287',
+            title: 'Reward Setup Command',
+            description: lines.join('\n'),
+            author: MEZON_EMBED_AUTHOR,
+            timestamp: new Date().toISOString(),
+            footer: MEZON_EMBED_FOOTER,
+          },
+        ],
+      });
     }
 
     if (action === 'remove') {
@@ -103,15 +173,29 @@ Sau khi setup, grantor reward bằng cách: chuột phải tin nhắn của ngư
         usernames,
       );
 
-      const lines = ['✅ Đã xóa khỏi danh sách được reward:'];
+      const lines: string[] = [];
       if (result.removed.length > 0) {
+        lines.push('Thu hồi quyền reward thành công:');
         lines.push(result.removed.join(', '));
       }
       if (result.notFound.length > 0) {
-        lines.push(`Không tìm thấy trong danh sách: ${result.notFound.join(', ')}`);
+        lines.push(
+          `Không tìm thấy trong danh sách: ${result.notFound.join(', ')}`,
+        );
       }
 
-      return reply(lines.join('\n'));
+      return this.replyToMessage(message, {
+        embed: [
+          {
+            color: '#ED4245',
+            title: 'Reward Setup Command',
+            description: lines.join('\n'),
+            author: MEZON_EMBED_AUTHOR,
+            timestamp: new Date().toISOString(),
+            footer: MEZON_EMBED_FOOTER,
+          },
+        ],
+      });
     }
   }
 

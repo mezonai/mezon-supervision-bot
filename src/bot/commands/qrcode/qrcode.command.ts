@@ -2,7 +2,11 @@ import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { DynamicCommandService } from 'src/bot/services/dynamic.service';
 import * as QRCode from 'qrcode';
-import { EmbedProps, MEZON_EMBED_FOOTER } from 'src/bot/constants/configs';
+import {
+  EmbedProps,
+  MEZON_EMBED_AUTHOR,
+  MEZON_EMBED_FOOTER,
+} from 'src/bot/constants/configs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EUserError } from 'src/bot/constants/error';
@@ -89,12 +93,11 @@ export class QRCodeCommand extends CommandMessage {
     const embed: EmbedProps[] = [
       {
         color: getRandomColor(),
-        title: `QR send token to ${findUser.username}`,
+        title: `QR send Mezon Đồng to ${findUser.clan_nick || findUser.display_name || findUser.username}`,
         image: {
           url: qrCodeDataUrl,
-          width: '300px',
-          height: '300px',
         },
+        author: MEZON_EMBED_AUTHOR,
         timestamp: new Date().toISOString(),
         footer: MEZON_EMBED_FOOTER,
       },

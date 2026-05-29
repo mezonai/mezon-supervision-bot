@@ -2,7 +2,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { Command } from 'src/bot/base/commandRegister.decorator';
-import { EmbedProps } from 'src/bot/constants/configs';
+import {
+  EmbedProps,
+  MEZON_EMBED_AUTHOR,
+  MEZON_EMBED_FOOTER,
+} from 'src/bot/constants/configs';
 import { EUserError } from 'src/bot/constants/error';
 import { User } from 'src/bot/models/user.entity';
 import { RedisCacheService } from 'src/bot/services/redis-cache.service';
@@ -84,23 +88,13 @@ export class AvatarCommand extends CommandMessage {
     const embed: EmbedProps[] = [
       {
         color: getRandomColor(),
-        title: `${findUser.clan_nick || findUser.username}'s avatar`,
-        author: {
-          name: findUser.clan_nick || findUser.username,
-          icon_url: user.avatar,
-          url: user.avatar,
-        },
+        title: `${findUser.clan_nick || findUser.display_name || findUser.username}'s avatar`,
+        author: MEZON_EMBED_AUTHOR,
         image: {
           url: user?.avatar ?? '',
-          width: '400px',
-          height: '400px',
         },
         timestamp: new Date().toISOString(),
-        footer: {
-          text: 'Powered by Mezon',
-          icon_url:
-            'https://cdn.mezon.vn/1837043892743049216/1840654271217930240/1827994776956309500/857_0246x0w.webp',
-        },
+        footer: MEZON_EMBED_FOOTER,
       },
     ];
     return messageChannel?.reply({ embed });

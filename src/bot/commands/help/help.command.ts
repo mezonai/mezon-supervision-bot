@@ -6,6 +6,10 @@ import {
   NO_ADMIN_PERMISSION_MESSAGE,
   PermissionService,
 } from 'src/bot/services/permission.service';
+import {
+  MEZON_EMBED_AUTHOR,
+  MEZON_EMBED_FOOTER,
+} from 'src/bot/constants/configs';
 
 @Command('help')
 export class HelpCommand extends CommandMessage {
@@ -53,10 +57,18 @@ export class HelpCommand extends CommandMessage {
       });
     }
 
-    const messageContent = this.permissionService.formatHelpMessage(isAdmin);
     return this.replyEphemeralToSender(message, {
-      t: messageContent,
-      mk: [{ type: EMarkdownType.PRE, s: 0, e: messageContent.length }],
+      embed: [
+        {
+          title: 'Help - Command List',
+          description:
+            'Here are the available commands for Mezon Supervision Bot.',
+          fields: this.permissionService.formatHelpMessage(isAdmin),
+          author: MEZON_EMBED_AUTHOR,
+          timestamp: new Date().toISOString(),
+          footer: MEZON_EMBED_FOOTER,
+        },
+      ],
     });
   }
 }

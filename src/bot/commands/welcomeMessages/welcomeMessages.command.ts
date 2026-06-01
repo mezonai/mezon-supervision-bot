@@ -1,14 +1,16 @@
 import { InjectRepository } from '@nestjs/typeorm';
-import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
+import { ChannelMessage } from 'mezon-sdk';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
-import {
-  NO_ADMIN_PERMISSION_MESSAGE,
-  PermissionService,
-} from 'src/bot/services/permission.service';
+import { PermissionService } from 'src/bot/services/permission.service';
 import { Repository } from 'typeorm';
 import { WelcomeMessage } from 'src/bot/models/welcomeMessage.entity';
+import {
+  buildBotEmbedPayload,
+  buildPermissionDeniedPayload,
+  EMBED_COLOR,
+} from 'src/bot/utils/embed.util';
 
 @Command('welcomemsg')
 export class WelcomeMsgCommand extends CommandMessage {
@@ -23,32 +25,23 @@ export class WelcomeMsgCommand extends CommandMessage {
 
   async execute(args: string[], message: ChannelMessage) {
     if (!this.permissionService.isAdmin(message.sender_id || '')) {
-      return this.replyToMessage(message, {
-        t: NO_ADMIN_PERMISSION_MESSAGE,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: NO_ADMIN_PERMISSION_MESSAGE.length,
-          },
-        ],
-      });
+      return this.replyToMessage(
+        message,
+        buildPermissionDeniedPayload('Welcome Message Command'),
+      );
     }
 
     const messageChannel = await this.getChannelMessage(message);
-    let messageContent =
-      'welcome message content is not given! \n Example: *welcomemsg welcome message content \n [username]: to get the user name \n [clanname]: to get clan name';
+    const helpDescription =
+      'Example: *welcomemsg welcome message content\n[username]: to get the user name\n[clanname]: to get clan name';
+
     if (!args[0] || !message.content.t) {
-      return await messageChannel?.reply({
-        t: messageContent,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: messageContent.length,
-          },
-        ],
-      });
+      return await messageChannel?.reply(
+        buildBotEmbedPayload({
+          title: 'Welcome Message Command',
+          description: helpDescription,
+        }),
+      );
     }
 
     const fullMessage = message.content.t;
@@ -56,20 +49,21 @@ export class WelcomeMsgCommand extends CommandMessage {
     const contentWithoutCommand = fullMessage.startsWith(commandPrefix)
       ? fullMessage.slice(commandPrefix.length).trim()
       : fullMessage.slice('*'.length).trim();
-    const dataMezonBotMessage = {
-      botId: process.env.SUPERVISION_BOT_ID,
-      content: contentWithoutCommand,
-    };
-    await this.welcomeMessageRepository.upsert(dataMezonBotMessage, ['botId']);
-    return await messageChannel?.reply({
-      t: contentWithoutCommand,
-      mk: [
-        {
-          type: EMarkdownType.PRE,
-          s: 0,
-          e: contentWithoutCommand.length,
-        },
-      ],
-    });
+
+    await this.welcomeMessageRepository.upsert(
+      {
+        botId: process.env.SUPERVISION_BOT_ID,
+        content: contentWithoutCommand,
+      },
+      ['botId'],
+    );
+
+    return await messageChannel?.reply(
+      buildBotEmbedPayload({
+        title: 'Welcome Message Command',
+        description: contentWithoutCommand,
+        color: EMBED_COLOR.SUCCESS,
+      }),
+    );
   }
 }

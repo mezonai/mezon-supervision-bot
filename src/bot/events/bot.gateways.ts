@@ -22,6 +22,8 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { ExtendersService } from '../services/extenders.services';
+import { BotEmbedAuthorService } from '../services/bot-embed-author.service';
+import { pickMessageAvatar } from '../utils/user-avatar.util';
 
 @Injectable()
 export class BotGateway {
@@ -31,6 +33,7 @@ export class BotGateway {
   constructor(
     clientService: MezonClientService,
     private extendersService: ExtendersService,
+    private botEmbedAuthorService: BotEmbedAuthorService,
     private eventEmitter: EventEmitter2,
   ) {
     this.client = clientService.getClient();
@@ -120,6 +123,17 @@ export class BotGateway {
       });
       try {
         if (message.sender_id && message.sender_id !== '0') {
+          const botId = process.env.SUPERVISION_BOT_ID;
+          if (botId && String(message.sender_id) === botId) {
+            const botAvatar = pickMessageAvatar(
+              message.avatar,
+              message.clan_avatar,
+            );
+            if (botAvatar) {
+              this.botEmbedAuthorService.syncFromAvatar(botAvatar);
+            }
+          }
+
           const user: any = {
             user_id: message.sender_id,
             username: message.username,

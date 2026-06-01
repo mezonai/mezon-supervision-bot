@@ -1,7 +1,8 @@
-import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
+import { ChannelMessage } from 'mezon-sdk';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
+import { buildBotEmbedPayload } from 'src/bot/utils/embed.util';
 import { RewardService } from './reward.service';
 
 const DEFAULT_LIMIT = 10;
@@ -24,10 +25,7 @@ export class RewardLeaderboardCommand extends CommandMessage {
       ? await this.rewardService.getUserPointsRank(senderId)
       : null;
 
-    const lines: string[] = [
-      `🏆 Bảng xếp hạng reward points (top ${limit})`,
-      '',
-    ];
+    const lines: string[] = [];
 
     if (entries.length === 0) {
       lines.push('Chưa có user nào có points.');
@@ -46,11 +44,13 @@ export class RewardLeaderboardCommand extends CommandMessage {
       );
     }
 
-    const content = lines.join('\n');
-    return this.replyToMessage(message, {
-      t: content,
-      mk: [{ type: EMarkdownType.PRE, s: 0, e: content.length }],
-    });
+    return this.replyToMessage(
+      message,
+      buildBotEmbedPayload({
+        title: `🏆 Bảng xếp hạng reward points (top ${limit})`,
+        description: lines.join('\n'),
+      }),
+    );
   }
 
   private parseLimit(raw: string | undefined): number {

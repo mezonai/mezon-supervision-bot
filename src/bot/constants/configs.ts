@@ -29,6 +29,10 @@ export const MEZON_EMBED_FOOTER = {
   icon_url: MEZON_IMAGE_URL,
 };
 
+export const MEZON_EMBED_AUTHOR = {
+  name: 'Mezon Supervision',
+};
+
 export enum FuncType {
   REWARD = 'reward',
   ALL = 'all',

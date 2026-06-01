@@ -2,8 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RewardGrantorService } from '../reward/reward-grantor.service';
 
-export const NO_ADMIN_PERMISSION_MESSAGE =
-  '[Bot] - You have no permission!';
+export const NO_ADMIN_PERMISSION_MESSAGE = '[Bot] - You have no permission!';
 
 export const PUBLIC_HELP_COMMANDS = [
   'help',
@@ -59,27 +58,41 @@ export class PermissionService {
     return [...this.adminIds];
   }
 
-  formatHelpMessage(isAdmin: boolean): string {
-    const publicLines = PUBLIC_HELP_COMMANDS.join(', ');
-    if (!isAdmin) {
+  formatHelpMessage(isAdmin: boolean): Array<{
+    name: string;
+    value: string;
+    inline?: boolean;
+    options?: any[];
+    inputs?: {};
+    max_options?: number;
+  }> {
+    if (isAdmin) {
       return [
-        'Mezon Supervision — Help',
-        `• Commands (${PUBLIC_HELP_COMMANDS.length})`,
-        publicLines,
-        '',
-        'Reward: grantor dùng Quick Menu trên tin nhắn người nhận.',
-      ].join('\n');
+        {
+          name: 'Commands',
+          value: PUBLIC_HELP_COMMANDS.map((c) => `*${c}`).join(', '),
+        },
+        {
+          name: 'Functionality',
+          value: 'Dùng Quick Menu trên tin nhắn để reward điểm cho người khác.',
+        },
+        {
+          name: 'Admin-only commands',
+          value: ADMIN_ONLY_HELP_COMMANDS.map((c) => `*${c}`).join(', '),
+        },
+      ];
+    } else {
+      return [
+        {
+          name: 'Commands',
+          value: PUBLIC_HELP_COMMANDS.map((c) => `*${c}`).join(', '),
+        },
+        {
+          name: 'Functionality',
+          value: 'Dùng Quick Menu trên tin nhắn để reward điểm cho người nhận.',
+        },
+      ];
     }
-
-    return [
-      'Mezon Supervision — Help',
-      `• Commands (${PUBLIC_HELP_COMMANDS.length})`,
-      publicLines,
-      `• Admin (${ADMIN_ONLY_HELP_COMMANDS.length})`,
-      ADMIN_ONLY_HELP_COMMANDS.join(', '),
-      '',
-      'Reward: *rewardsetup (admin) · Quick Menu (grantor).',
-    ].join('\n');
   }
 
   async canRewardGrantor(

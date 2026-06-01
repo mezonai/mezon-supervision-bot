@@ -3,10 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
-import { EMarkdownType } from 'mezon-sdk';
 import { Transaction } from '../models/transaction.entity';
 import { UserCacheService } from '../services/user-cache.service';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
+import {
+  buildBotEmbedPayload,
+  EMBED_COLOR,
+} from '../utils/embed.util';
 
 export interface RewardCreditParams {
   rewarderId: string;
@@ -180,10 +183,13 @@ export class RewardService {
       const client = this.clientService.getClient();
       const user = await client.users.fetch(recipientId);
       const dmText = `🎁 Bạn nhận ${amount.toLocaleString('vi-VN')} points rewarded từ ${rewarderUsername}!`;
-      await user?.sendDM({
-        t: dmText,
-        mk: [{ type: EMarkdownType.PRE, s: 0, e: dmText.length }],
-      });
+      await user?.sendDM(
+        buildBotEmbedPayload({
+          title: 'Reward Points',
+          description: dmText,
+          color: EMBED_COLOR.SUCCESS,
+        }),
+      );
     } catch {
       // DM optional
     }

@@ -1,5 +1,5 @@
 import { OnEvent } from '@nestjs/event-emitter';
-import { EMarkdownType, Events, TokenSentEvent } from 'mezon-sdk';
+import { Events, TokenSentEvent } from 'mezon-sdk';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/bot/models/user.entity';
@@ -10,6 +10,10 @@ import { UserCacheService } from 'src/bot/services/user-cache.service';
 import { RedisCacheService } from 'src/bot/services/redis-cache.service';
 import { BaseQueueProcessor } from 'src/bot/base/queue-processor.base';
 import { PermissionService } from 'src/bot/services/permission.service';
+import {
+  buildBotEmbedPayload,
+  EMBED_COLOR,
+} from 'src/bot/utils/embed.util';
 
 @Injectable()
 export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
@@ -127,11 +131,14 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
       const client = this.clientService.getClient();
       try {
         const user = await client.users.fetch(tokenEvent.sender_id as string);
-        const successMessage = `💸Nạp ${tokenEvent.amount.toLocaleString('vi-VN')} mezon đồng thành công!`;
-        await user?.sendDM({
-          t: successMessage,
-          mk: [{ type: EMarkdownType.PRE, s: 0, e: successMessage.length }],
-        });
+        const successMessage = `💸 Nạp ${tokenEvent.amount.toLocaleString('vi-VN')} mezon đồng thành công!`;
+        await user?.sendDM(
+          buildBotEmbedPayload({
+            title: 'Nạp Mezon Đồng',
+            description: successMessage,
+            color: EMBED_COLOR.SUCCESS,
+          }),
+        );
       } catch (error) {
         this.logger.warn(
           `Failed to DM sender ${tokenEvent.sender_id}: ${error?.message || error}`,
@@ -141,10 +148,13 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
           try {
             const adminUser = await client.users.fetch(adminId);
             const adminMessage = `Không send được DM cho user ${tokenEvent.sender_id}.\n${error}`;
-            await adminUser?.sendDM({
-              t: adminMessage,
-              mk: [{ type: EMarkdownType.PRE, s: 0, e: adminMessage.length }],
-            });
+            await adminUser?.sendDM(
+              buildBotEmbedPayload({
+                title: 'Token Recharge Alert',
+                description: adminMessage,
+                color: EMBED_COLOR.ERROR,
+              }),
+            );
           } catch (errorAdmin) {
             this.logger.error(
               `Failed to DM admin ${adminId}: ${errorAdmin?.message || errorAdmin}`,

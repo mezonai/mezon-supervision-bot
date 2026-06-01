@@ -1,4 +1,4 @@
-import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
+import { ChannelMessage } from 'mezon-sdk';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -7,7 +7,34 @@ import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { FuncType } from 'src/bot/constants/configs';
 import { UserCacheService } from 'src/bot/services/user-cache.service';
-import { PermissionService, NO_ADMIN_PERMISSION_MESSAGE } from 'src/bot/services/permission.service';
+import { PermissionService } from 'src/bot/services/permission.service';
+import {
+  buildBotEmbedPayload,
+  buildPermissionDeniedPayload,
+  EMBED_COLOR,
+} from 'src/bot/utils/embed.util';
+
+const BAN_HELP_FIELDS = [
+  {
+    name: 'username',
+    value: 'Tên người bị ban (có thể nhiều user, phân cách bằng dấu phẩy).',
+  },
+  {
+    name: 'type',
+    value: 'Chức năng bị ban: reward hoặc all.',
+  },
+  {
+    name: 'time',
+    value: 'Thời gian ban (đơn vị: s, m, h, d).',
+  },
+  {
+    name: 'note',
+    value: 'Lý do ban.',
+  },
+];
+
+const BAN_HELP_EXAMPLE =
+  'Ví dụ: *ban username: a.nguyenvan, b.phamquoc type: reward time: 5m note: phá hoại';
 
 @Command('ban')
 export class BanCommand extends CommandMessage {
@@ -22,16 +49,10 @@ export class BanCommand extends CommandMessage {
 
   async execute(args: string[], message: ChannelMessage) {
     if (!this.permissionService.isAdmin(message.sender_id || '')) {
-      return this.replyToMessage(message, {
-        t: NO_ADMIN_PERMISSION_MESSAGE,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: NO_ADMIN_PERMISSION_MESSAGE.length,
-          },
-        ],
-      });
+      return this.replyToMessage(
+        message,
+        buildPermissionDeniedPayload('Ban Command'),
+      );
     }
 
     const messageChannel = await this.getChannelMessage(message);
@@ -42,24 +63,15 @@ export class BanCommand extends CommandMessage {
     const noteMatch = content.match(/note:\s*(.+)/);
 
     if (!typeMatch || !timeMatch || !usernameMatch) {
-      const content = `Ban
-        - username: tên người bị ban
-        - type: ban chức năng (reward, all)
-        - time: thời gian ban (đơn vị: s, m, h, d)
-        - note: lý do ban
-        Ex: *ban username: a.nguyenvan, b.phamquoc type: reward time: 5m note: phá hoại`;
-
-      return await messageChannel?.reply({
-        t: content,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: content.length,
-          },
-        ],
-      });
+      return await messageChannel?.reply(
+        buildBotEmbedPayload({
+          title: 'Ban Command',
+          description: BAN_HELP_EXAMPLE,
+          fields: BAN_HELP_FIELDS,
+        }),
+      );
     }
+
     const usernameRaw = usernameMatch[1].trim();
     const usernames = usernameRaw.split(',').map((u) => u.trim());
     const type = typeMatch[1];
@@ -84,24 +96,15 @@ export class BanCommand extends CommandMessage {
         duration = timeValue * 86400;
         break;
       default:
-        const contentInvalidUnit = `Ban
-        - username: tên người bị ban
-        - type: ban chức năng (reward, all)
-        - time: thời gian ban (đơn vị: s, m, h, d)
-        - note: lý do ban
-        Ex: *ban username: a.nguyenvan, b.phamquoc type: reward time: 5m note: phá hoại`;
-
-        return await messageChannel?.reply({
-          t: contentInvalidUnit,
-          mk: [
-            {
-              type: EMarkdownType.PRE,
-              s: 0,
-              e: contentInvalidUnit.length,
-            },
-          ],
-        });
+        return await messageChannel?.reply(
+          buildBotEmbedPayload({
+            title: 'Ban Command',
+            description: BAN_HELP_EXAMPLE,
+            fields: BAN_HELP_FIELDS,
+          }),
+        );
     }
+
     let funcType = '';
     switch (type) {
       case FuncType.REWARD:
@@ -111,74 +114,50 @@ export class BanCommand extends CommandMessage {
         funcType = FuncType.ALL;
         break;
       default:
-        const content = `Ban
-        - username: tên người bị ban
-        - type: ban chức năng (reward, all)
-        - time: thời gian ban (đơn vị: s, m, h, d)
-        - note: lý do ban
-        Ex: *ban username: a.nguyenvan, b.phamquoc type: reward time: 5m note: phá hoại`;
-
-        return await messageChannel?.reply({
-          t: content,
-          mk: [
-            {
-              type: EMarkdownType.PRE,
-              s: 0,
-              e: content.length,
-            },
-          ],
-        });
+        return await messageChannel?.reply(
+          buildBotEmbedPayload({
+            title: 'Ban Command',
+            description: BAN_HELP_EXAMPLE,
+            fields: BAN_HELP_FIELDS,
+          }),
+        );
     }
 
     const expiresAt = now + duration;
-    let userban: string[] = [];
+    const userban: string[] = [];
     for (const username of usernames) {
       const findUser = await this.userRepository.findOne({
-        where: {
-          username: username,
-        },
+        where: { username },
       });
 
-      if (!findUser) {
-        continue;
-      }
-      const user = await this.userCacheService.getUserFromCache(findUser.user_id);
-      if (!user) {
-        continue
-      }
-      
-      const bans = Array.isArray(user.ban) ? user.ban : [];
+      if (!findUser) continue;
 
+      const user = await this.userCacheService.getUserFromCache(findUser.user_id);
+      if (!user) continue;
+
+      const bans = Array.isArray(user.ban) ? user.ban : [];
       const idx = bans.findIndex((b) => b.type === funcType);
 
       if (idx >= 0) {
         bans[idx].unBanTime = expiresAt;
         bans[idx].note = note;
       } else {
-        bans.push({
-          type: funcType,
-          unBanTime: expiresAt,
-          note: note,
-        });
+        bans.push({ type: funcType, unBanTime: expiresAt, note });
       }
 
       user.ban = bans;
       await this.userCacheService.updateUserCache(findUser.user_id, user);
       userban.push(username);
     }
-    let contentMsg = '';
+
     if (userban.length > 0) {
-      contentMsg = `${userban.join(', ')} đã bị ban ${funcType}`;
-      return await messageChannel?.reply({
-        t: contentMsg,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: contentMsg.length,
-          },
-        ],
-      });
+      return await messageChannel?.reply(
+        buildBotEmbedPayload({
+          title: 'Ban Command',
+          description: `${userban.join(', ')} đã bị ban ${funcType}`,
+          color: EMBED_COLOR.SUCCESS,
+        }),
+      );
     }
   }
 }

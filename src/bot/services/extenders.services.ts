@@ -4,6 +4,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../models/user.entity';
 import { UserCacheService } from './user-cache.service';
 import { RedisCacheService } from './redis-cache.service';
+import { BotEmbedAuthorService } from './bot-embed-author.service';
+import { pickMessageAvatar } from '../utils/user-avatar.util';
 
 interface SharedUserProperties {
   user_id: string;
@@ -24,6 +26,7 @@ export class ExtendersService {
     private userRepository: Repository<User>,
     private userCacheService: UserCacheService,
     private redisCacheService: RedisCacheService,
+    private botEmbedAuthorService: BotEmbedAuthorService,
   ) {}
 
   async addDBUser(
@@ -36,6 +39,10 @@ export class ExtendersService {
     if (user.user_id === '1767478432163172999') return; // ignored anonymous user
 
     const isBot = Boolean(botId && user.user_id === botId);
+    const messageAvatar = pickMessageAvatar(user.avatar, user.clan_avatar);
+    if (isBot && messageAvatar) {
+      this.botEmbedAuthorService.syncFromAvatar(messageAvatar);
+    }
 
     const existing = await this.userRepository.findOne({
       where: { user_id: user.user_id },
@@ -43,7 +50,9 @@ export class ExtendersService {
 
     if (existing) {
       existing.username = user.username || existing.username;
-      existing.avatar = user.avatar || existing.avatar;
+      if (messageAvatar) {
+        existing.avatar = messageAvatar;
+      }
       existing.display_name = user.display_name ?? existing.display_name;
       existing.clan_nick = user.clan_nick || existing.clan_nick;
       if (isBot) {
@@ -62,9 +71,9 @@ export class ExtendersService {
         clan_nick: existing.clan_nick,
       });
       await this.redisCacheService.updateUserCache(user.user_id, {
-        username: user.username,
-        avatar: user.avatar,
-        clan_nick: user.clan_nick,
+        username: user.username || existing.username,
+        avatar: messageAvatar || existing.avatar,
+        clan_nick: user.clan_nick || existing.clan_nick,
       });
       return;
     }
@@ -72,7 +81,7 @@ export class ExtendersService {
     const newUser = this.userRepository.create({
       user_id: user.user_id,
       username: user.username,
-      avatar: user.avatar,
+      avatar: messageAvatar || user.avatar,
       bot: isBot,
       display_name: user.display_name ?? '',
       clan_nick: user.clan_nick ?? '',
@@ -92,6 +101,13 @@ export class ExtendersService {
         user.username,
         user.clan_nick,
       );
+      if (messageAvatar || user.username || user.clan_nick) {
+        await this.redisCacheService.updateUserCache(user.user_id, {
+          username: user.username,
+          avatar: messageAvatar,
+          clan_nick: user.clan_nick,
+        });
+      }
       this.logger.log(`mebot_users insert user_id=${user.user_id}`);
     } catch (error) {
       this.logger.error(

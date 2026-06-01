@@ -3,13 +3,17 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   ApiMessageRef,
+  ChannelMessageContent,
   ChannelStreamMode,
   ChannelType,
-  EMarkdownType,
   Events,
   QuickMenuEvent,
   ReplyMessageData,
 } from 'mezon-sdk';
+import {
+  buildBotEmbedPayload,
+  EMBED_COLOR,
+} from '../utils/embed.util';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../models/user.entity';
@@ -88,7 +92,11 @@ export class ListenerQuickMenuReward {
           clanId,
           channelId,
           targetMessageId,
-          'Bot chưa được khởi tạo trong DB. Liên hệ admin.',
+          this.buildEmbedPayload(
+            'Reward',
+            'Bot chưa được khởi tạo trong DB. Liên hệ admin.',
+            EMBED_COLOR.ERROR,
+          ),
           msg,
           messageAuthorId,
         );
@@ -104,7 +112,11 @@ export class ListenerQuickMenuReward {
           clanId,
           channelId,
           targetMessageId,
-          'Không xác định được người thực hiện reward.',
+          this.buildEmbedPayload(
+            'Reward',
+            'Không xác định được người thực hiện reward.',
+            EMBED_COLOR.ERROR,
+          ),
           msg,
           messageAuthorId,
         );
@@ -221,7 +233,7 @@ export class ListenerQuickMenuReward {
           clanId,
           channelId,
           targetMessageId,
-          content,
+          this.buildEmbedPayload('Reward', content, EMBED_COLOR.SUCCESS),
           msg,
           messageAuthorId,
         );
@@ -314,11 +326,8 @@ export class ListenerQuickMenuReward {
     return undefined;
   }
 
-  private buildPrePayload(text: string) {
-    return {
-      t: text,
-      mk: [{ type: EMarkdownType.PRE, s: 0, e: text.length }],
-    };
+  private buildEmbedPayload(title: string, description: string, color?: string) {
+    return buildBotEmbedPayload({ title, description, color });
   }
 
   private async sendEphemeralToGrantor(
@@ -335,7 +344,7 @@ export class ListenerQuickMenuReward {
       if (!channel) return;
       await channel.sendEphemeral(
         grantorId,
-        this.buildPrePayload(text),
+        this.buildEmbedPayload('Reward', text, EMBED_COLOR.ERROR),
         this.isValidMezonId(messageId) ? messageId : undefined,
       );
     } catch (error) {
@@ -410,7 +419,7 @@ export class ListenerQuickMenuReward {
     clanId: string,
     channelId: string,
     targetMessageId: string,
-    text: string,
+    payload: ChannelMessageContent,
     menuMsg: QuickMenuMessage,
     messageAuthorId: string,
   ): Promise<void> {
@@ -440,7 +449,6 @@ export class ListenerQuickMenuReward {
         messageAuthorId,
         menuMsg,
       );
-      const payload = this.buildPrePayload(text);
       const data: ReplyMessageData = {
         clan_id: channel.clan.id!,
         channel_id: channel.id!,

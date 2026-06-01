@@ -1,19 +1,17 @@
-import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
+import { ChannelMessage } from 'mezon-sdk';
 import { Command } from 'src/bot/base/commandRegister.decorator';
-import { DynamicCommandService } from 'src/bot/services/dynamic.service';
 import * as QRCode from 'qrcode';
-import {
-  EmbedProps,
-  MEZON_EMBED_AUTHOR,
-  MEZON_EMBED_FOOTER,
-} from 'src/bot/constants/configs';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { EUserError } from 'src/bot/constants/error';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
+import {
+  buildBotEmbed,
+  buildErrorPayload,
+} from 'src/bot/utils/embed.util';
 import { getRandomColor } from 'src/bot/utils/helps';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Command('qr')
 export class QRCodeCommand extends CommandMessage {
@@ -49,7 +47,6 @@ export class QRCodeCommand extends CommandMessage {
         userQuery = args.length ? args[0] : message.username!;
       }
 
-      //check fist arg
       if (args[0]) {
         const findUserArg = await this.userRepository
           .createQueryBuilder('user')
@@ -68,17 +65,12 @@ export class QRCodeCommand extends CommandMessage {
       where: { username: userQuery },
     });
 
-    if (!findUser)
-      return await messageChannel?.reply({
-        t: EUserError.INVALID_USER,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: EUserError.INVALID_USER.length,
-          },
-        ],
-      });
+    if (!findUser) {
+      return await messageChannel?.reply(
+        buildErrorPayload('QR Code Command', EUserError.INVALID_USER),
+      );
+    }
+
     const sendTokenData = {
       sender_id: message.sender_id,
       receiver_id: findUser.user_id,
@@ -86,22 +78,17 @@ export class QRCodeCommand extends CommandMessage {
     };
     const qrCodeDataUrl = await QRCode.toDataURL(
       JSON.stringify(sendTokenData),
-      {
-        errorCorrectionLevel: 'L',
-      },
+      { errorCorrectionLevel: 'L' },
     );
-    const embed: EmbedProps[] = [
-      {
-        color: getRandomColor(),
-        title: `QR send Mezon Đồng to ${findUser.clan_nick || findUser.display_name || findUser.username}`,
-        image: {
-          url: qrCodeDataUrl,
-        },
-        author: MEZON_EMBED_AUTHOR,
-        timestamp: new Date().toISOString(),
-        footer: MEZON_EMBED_FOOTER,
-      },
-    ];
-    return await messageChannel?.reply({ embed });
+
+    return await messageChannel?.reply({
+      embed: [
+        buildBotEmbed({
+          color: getRandomColor(),
+          title: `QR send Mezon Đồng to ${findUser.clan_nick || findUser.display_name || findUser.username}`,
+          image: { url: qrCodeDataUrl },
+        }),
+      ],
+    });
   }
 }

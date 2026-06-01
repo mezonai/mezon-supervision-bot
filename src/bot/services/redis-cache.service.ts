@@ -76,10 +76,17 @@ export class RedisCacheService {
   ): Promise<void> {
     try {
       const existing = await this.getUserCache(userId);
-      if (existing) {
-        const updated = { ...existing, ...updates, lastUpdated: Date.now() };
-        await this.setUserCache(userId, updated);
-      }
+      const updated: UserCache = {
+        user_id: userId,
+        amount: existing?.amount ?? 0,
+        ban: existing?.ban,
+        username: existing?.username,
+        clan_nick: existing?.clan_nick,
+        avatar: existing?.avatar,
+        ...updates,
+        lastUpdated: Date.now(),
+      };
+      await this.setUserCache(userId, updated);
     } catch (error) {
       this.logger.error(`Error updating user cache for ${userId}:`, error);
     }

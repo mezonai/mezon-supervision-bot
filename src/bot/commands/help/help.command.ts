@@ -1,15 +1,12 @@
-import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
+import { ChannelMessage } from 'mezon-sdk';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
+import { PermissionService } from 'src/bot/services/permission.service';
 import {
-  NO_ADMIN_PERMISSION_MESSAGE,
-  PermissionService,
-} from 'src/bot/services/permission.service';
-import {
-  MEZON_EMBED_AUTHOR,
-  MEZON_EMBED_FOOTER,
-} from 'src/bot/constants/configs';
+  buildBotEmbedPayload,
+  buildPermissionDeniedPayload,
+} from 'src/bot/utils/embed.util';
 
 @Command('help')
 export class HelpCommand extends CommandMessage {
@@ -26,49 +23,45 @@ export class HelpCommand extends CommandMessage {
 
     if (args[0] === 'user') {
       if (!isAdmin) {
-        return this.replyEphemeralToSender(message, {
-          t: NO_ADMIN_PERMISSION_MESSAGE,
-          mk: [
-            {
-              type: EMarkdownType.PRE,
-              s: 0,
-              e: NO_ADMIN_PERMISSION_MESSAGE.length,
-            },
-          ],
-        });
+        return this.replyEphemeralToSender(
+          message,
+          buildPermissionDeniedPayload('Help Command'),
+        );
       }
 
       if (args[1]) {
         const user = this.client.users.get(args[1]);
-        let messageContent = `userId: ${user?.id}, dmId: ${user?.dmChannelId}`;
-        if (!user) {
-          messageContent = 'Not found user';
-        }
-        return this.replyEphemeralToSender(message, {
-          t: messageContent,
-          mk: [{ type: EMarkdownType.PRE, s: 0, e: messageContent.length }],
-        });
+        const messageContent = user
+          ? `userId: ${user.id}, dmId: ${user.dmChannelId}`
+          : 'Not found user';
+        return this.replyEphemeralToSender(
+          message,
+          buildBotEmbedPayload({
+            title: 'Help - User Info',
+            description: messageContent,
+          }),
+        );
       }
 
       const users = Array.from(this.client.users.values());
       const countDMChannel = users.filter((u) => !!u.dmChannelId).length;
-      return this.replyEphemeralToSender(message, {
-        t: `Count init: ${countDMChannel}`,
-      });
+      return this.replyEphemeralToSender(
+        message,
+        buildBotEmbedPayload({
+          title: 'Help - User Stats',
+          description: `Count init: ${countDMChannel}`,
+        }),
+      );
     }
 
-    return this.replyEphemeralToSender(message, {
-      embed: [
-        {
-          title: 'Help - Command List',
-          description:
-            'Here are the available commands for Mezon Supervision Bot.',
-          fields: this.permissionService.formatHelpMessage(isAdmin),
-          author: MEZON_EMBED_AUTHOR,
-          timestamp: new Date().toISOString(),
-          footer: MEZON_EMBED_FOOTER,
-        },
-      ],
-    });
+    return this.replyEphemeralToSender(
+      message,
+      buildBotEmbedPayload({
+        title: 'Help - Command List',
+        description:
+          'Here are the available commands for Mezon Supervision Bot.',
+        fields: this.permissionService.formatHelpMessage(isAdmin),
+      }),
+    );
   }
 }

@@ -34,6 +34,8 @@ import { RewardSetupCommand } from './reward/reward-setup.command';
 import { RewardLeaderboardCommand } from './reward/reward-leaderboard.command';
 import { RewardService } from './reward/reward.service';
 import { ListenerQuickMenuReward } from './listeners/quickMenu.reward.listener';
+import { BotEmbedAuthorService } from './services/bot-embed-author.service';
+import { UserAvatarService } from './services/user-avatar.service';
 
 @Module({
   imports: [
@@ -70,6 +72,8 @@ import { ListenerQuickMenuReward } from './listeners/quickMenu.reward.listener';
     RewardLeaderboardCommand,
     RewardService,
     ListenerQuickMenuReward,
+    BotEmbedAuthorService,
+    UserAvatarService,
   ],
   controllers: [],
 })

@@ -5,9 +5,3 @@ export function Command(commandName: string) {
     CommandStorage.registerCommand(commandName, target);
   };
 }
-
-export function CommandDynamic(commandName: string) {
-  return function (target: any) {
-    CommandStorage.registerCommandDynamic(commandName, target);
-  };
-}

@@ -6,6 +6,7 @@ import { BotModule } from './bot/bot.module';
 import { MezonModule } from './mezon/mezon.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_DATA_SOURCE_MIGRATIONS } from './database/app-migrations';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -56,5 +57,6 @@ import { APP_DATA_SOURCE_MIGRATIONS } from './database/app-migrations';
     }),
     BotModule,
   ],
+  controllers: [AppController],
 })
 export class AppModule {}

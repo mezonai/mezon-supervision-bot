@@ -10,9 +10,6 @@ import {
   GiveCoffeeEvent,
   AddClanUserEvent,
   QuickMenuEvent,
-} from 'mezon-sdk';
-
-import {
   ChannelCreatedEvent,
   ChannelDeletedEvent,
   ChannelUpdatedEvent,
@@ -146,7 +143,7 @@ export class BotGateway {
           await this.extendersService.addDBUser(user, '', '');
         }
       } catch (e) {
-        console.log(e);
+        this.logger.warn('addDBUser on ChannelMessage failed', e);
       }
       this.eventEmitter.emit(Events.ChannelMessage, message);
     });

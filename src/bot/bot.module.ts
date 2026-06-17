@@ -1,14 +1,9 @@
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
-import { MulterModule } from '@nestjs/platform-express';
-
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigService } from '@nestjs/config';
-import { HttpModule } from '@nestjs/axios';
 import { User } from './models/user.entity';
 import { ExtendersService } from './services/extenders.services';
-import { DynamicCommandService } from './services/dynamic.service';
 import { HelpCommand } from './commands/help/help.command';
 import { BotGateway } from './events/bot.gateways';
 import { ListenerChannelMessage } from './listeners/onChannelMessage.listener';
@@ -39,12 +34,8 @@ import { UserAvatarService } from './services/user-avatar.service';
 
 @Module({
   imports: [
-    MulterModule.register({
-      dest: './files',
-    }),
     DiscoveryModule,
     TypeOrmModule.forFeature([User, WelcomeMessage, Transaction, RewardGrantor]),
-    HttpModule,
   ],
   providers: [
     CommandBase,
@@ -53,9 +44,7 @@ import { UserAvatarService } from './services/user-avatar.service';
     HelpCommand,
     AvatarCommand,
     QRCodeCommand,
-    ConfigService,
     ExtendersService,
-    DynamicCommandService,
     RedisCacheService,
     UserCacheService,
     ReplyStatsService,
